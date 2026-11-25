@@ -1,0 +1,28 @@
+{
+  "_uitleg": "Volgorde waarin build.mjs de bronbestanden samenvoegt tot één ES-module. Alle bestanden delen dezelfde scope (stap 1 van de modularisering, zie CLAUDE.md). Bovenaan staan altijd de imports van three en OrbitControls.",
+  "files": [
+    "core/util.js",
+    "core/vehicle.js",
+    "core/state.js",
+    "sensors/lidar/presets.js",
+    "core/world.js",
+    "worlds/street.js",
+    "worlds/farm.js",
+    "worlds/highway.js",
+    "sensors/lidar/model.js",
+    "sensors/lidar/scan.js",
+    "core/models3d.js",
+    "core/scene.js",
+    "sensors/lidar/mount3d.js",
+    "sensors/lidar/pointcloud.js",
+    "core/weather.js",
+    "sensors/lidar/pcview.js",
+    "core/camera.js",
+    "sensors/lidar/controls.js",
+    "core/ui.js",
+    "sensors/lidar/metrics.js",
+    "core/experiments.js",
+    "sensors/lidar/experiments.js",
+    "core/loop.js"
+  ]
+}
