@@ -90,4 +90,4 @@ Rekentijd op de main thread per volledige scan (headless Chrome, swiftshader): 1
 - Experimenten nalezen (Nobel).
 - Radar als eerste nieuwe sensor (sensorfusie: radar door stof en mist).
 - Eventueel: GitHub Pages als alternatief voor uploaden in Toledo; `/points` publiceren via rosbridge; koppeling met het CR0451-labo.
-- Bekend klein lay-outpunt: bij smalle 3D-weergave overlapt de knoppenbalk "Camera / Persoon / Hond" de rijknoppen.
+

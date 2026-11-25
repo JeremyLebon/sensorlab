@@ -27,12 +27,11 @@ body{background:var(--bg);color:var(--fg);font:15px/1.45 var(--f-body);display:f
 .name{font:700 22px/1 var(--f-display);letter-spacing:.01em}
 .sub{font:500 12px var(--f-mono);color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
 .layout{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 360px}
-.views{display:grid;grid-template-columns:1fr 1fr;min-width:0;min-height:0}
-.views[data-l="world"]{grid-template-columns:1fr}.views[data-l="world"] #pcvStage{display:none}
-.views[data-l="pcv"]{grid-template-columns:1fr}.views[data-l="pcv"] #stage{display:none}
+.views{display:grid;grid-template-columns:repeat(var(--n,2),minmax(0,1fr));min-width:0;min-height:0}
 .stage{position:relative;min-width:0;min-height:420px;overflow:hidden}
 #stage{background:var(--sky)}
-#pcvStage{background:#05080a;border-left:1px solid var(--line)}
+/* venster van een sensor (puntenwolk, radarbeeld): altijd donker */
+.sview{background:#05080a;border-left:1px solid var(--line)}
 .stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
 .loading{position:absolute;inset:0;display:grid;place-items:center;font:500 14px var(--f-mono);color:var(--muted)}
 .hud{position:absolute;left:12px;top:12px;font:12px/1.6 var(--f-mono);background:color-mix(in srgb,var(--surface) 88%,transparent);
@@ -44,7 +43,7 @@ body{background:var(--bg);color:var(--fg);font:15px/1.45 var(--f-body);display:f
 .tb button.on{background:var(--fg);color:var(--surface)}
 #views{left:12px;bottom:12px}
 #modes{left:12px;bottom:52px}
-#drive{right:12px;bottom:52px}
+#drive{right:12px;top:12px}
 #drive button.on{background:var(--acc);color:var(--surface)}
 .seg{display:flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
 .seg button{border:0;border-right:1px solid var(--line);background:transparent;color:var(--fg);font:500 13px var(--f-body);padding:6px 11px;cursor:pointer}
@@ -64,8 +63,10 @@ body{background:var(--bg);color:var(--fg);font:15px/1.45 var(--f-body);display:f
 .pcvleg{position:absolute;right:10px;bottom:10px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;font:12px var(--f-mono);color:#9fb3bd;background:rgba(13,20,24,.8);padding:4px 8px;border-radius:5px;max-width:calc(100% - 20px)}
 .pcvleg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
 .pcvleg .barc{width:90px;height:9px;border-radius:2px;display:inline-block;vertical-align:-1px;margin:0 4px}
-#pcvStage:fullscreen{width:100vw;height:100vh}
-.views[data-l="split"] #legend{display:none}
+.sview:fullscreen{width:100vw;height:100vh}
+.exph{margin:6px 0 0;font:600 12px var(--f-mono);text-transform:uppercase;letter-spacing:.1em;color:var(--acc)}
+.meas-head h2.big{font:700 18px var(--f-display);color:var(--fg);text-transform:none;letter-spacing:0}
+#sensorSel{align-self:flex-start}
 
 .panel{border-left:1px solid var(--line);background:var(--surface);overflow-y:scroll;min-width:0;min-height:0;overscroll-behavior:contain}
 .tabs{display:flex;position:sticky;top:0;z-index:2;background:var(--surface);border-bottom:1px solid var(--line)}
@@ -103,5 +104,5 @@ button.act{align-self:flex-start;font:600 13px var(--f-body);padding:6px 12px;bo
 .f{font:12px var(--f-mono)}
 .cmp td{font:13px/1.4 var(--f-body);text-align:left;padding:6px 4px}
 .cmp td:first-child{font-weight:600}
-@media (max-width:1100px){.views{grid-template-columns:1fr;grid-template-rows:1fr 1fr}.views[data-l="world"],.views[data-l="pcv"]{grid-template-rows:1fr}#pcvStage{border-left:0;border-top:1px solid var(--line)}}
-@media (max-width:860px){.layout{grid-template-columns:1fr;grid-template-rows:78vh auto}.panel{border-left:0;border-top:1px solid var(--line)}.legend{display:none}.stage{min-height:260px}.hud{font-size:10.5px;padding:6px 8px}#drive{top:auto;bottom:92px}}
+@media (max-width:1100px){.views{grid-template-columns:1fr;grid-template-rows:repeat(var(--n,2),minmax(0,1fr))}.sview{border-left:0;border-top:1px solid var(--line)}}
+@media (max-width:860px){.layout{grid-template-columns:1fr;grid-template-rows:78vh auto}.panel{border-left:0;border-top:1px solid var(--line)}.legend{display:none}.stage{min-height:260px}.hud{font-size:10.5px;padding:6px 8px}}

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Lidar-simulator 3D — Autonome mobiliteit & AI</title>
+<title>Sensorlab — Autonome mobiliteit & AI</title>
 <!--@FONTS-->
 <style>
 /*@CSS*/
@@ -12,16 +12,12 @@
 </head>
 <body>
 <header class="bar">
-  <div class="brand"><span class="name">Lidar-simulator 3D</span><span class="sub">Autonome mobiliteit &amp; AI · labo sensoren</span></div>
-  <div class="seg" id="layoutSeg" role="group" aria-label="Weergave">
-    <button data-l="world">3D-wereld</button>
-    <button data-l="split" class="on">Naast elkaar</button>
-    <button data-l="pcv">Enkel puntenwolk</button>
-  </div>
+  <div class="brand"><span class="name">Sensorlab</span><span class="sub">Autonome mobiliteit &amp; AI · labo sensoren</span></div>
+  <div class="seg" id="layoutSeg" role="group" aria-label="Vensters tonen"></div>
 </header>
 <main class="layout">
-  <div class="views" id="viewsBox" data-l="split">
-    <section class="stage" id="stage">
+  <div class="views" id="viewsBox">
+    <section class="stage" id="stage" data-pane="world">
       <div class="loading" id="loading">3D laden…</div>
       <div class="hud" id="hud"></div>
       <div class="toast" id="toast"></div>
@@ -39,13 +35,7 @@
       </div>
       <div class="legend" id="legend"></div>
     </section>
-    <section class="stage" id="pcvStage" aria-label="Enkel de lidar-puntenwolk">
-      <div class="pcvhead" id="pcvHead"></div>
-      <div class="pcvtb" id="pcvTb">
-        <button data-pv="3d" class="on">3D</button><button data-pv="top">Boven</button><button data-pv="drv">Bestuurder</button><button id="pcvFs" title="Puntenwolk op volledig scherm (Esc = terug)">⛶</button>
-      </div>
-      <div class="pcvleg" id="pcvLeg"></div>
-    </section>
+    <!-- vensters van de sensoren worden door de sensor zelf toegevoegd (bv. sensors/lidar/pcview.js) -->
   </div>
   <aside class="panel">
     <nav class="tabs" role="tablist">
@@ -56,21 +46,7 @@
     </nav>
     <div class="pane" id="pane-sensor"></div>
     <div class="pane" id="pane-env" hidden></div>
-    <div class="pane" id="pane-meas" hidden>
-      <section><h2>Wat ziet de sensor?</h2><div id="objtab"></div><p class="hint">Aantal punten van de laatste scan dat werkelijk op het object valt.</p></section>
-      <section><h2>Meetwaarden</h2><div id="metrics"></div></section>
-      <section><h2>Bouwwijzen vergeleken</h2>
-        <table class="cmp">
-          <tr><td>Roterend</td><td>360° rondom, 16–128 lagen. + één sensor voor alles, bewezen, veel ROS2-drivers. − bewegende delen, duur, bewegingsvervorming, lagen ver uit elkaar op afstand.</td></tr>
-          <tr><td>Solid-state</td><td>±120° × 25°, MEMS of flash. + robuust, compact, inbouw in grille of voorruit, dicht puntenpatroon vooruit. − beperkt FOV: 3–4 sensoren voor rondom zicht.</td></tr>
-          <tr><td>2D-veiligheid</td><td>1 laag, tot 270°. + gecertificeerd (PL d), veilige uitgangen. − ziet enkel één vlak.</td></tr>
-          <tr><td>Goedkope 2D</td><td>1 laag, 360°, kort bereik. + spotgoedkoop, ideaal om SLAM te leren. − traag, gevoelig voor zon, niet veilig.</td></tr>
-        </table>
-      </section>
-      <section><h2>Formules</h2>
-        <p class="hint"><span class="f">R = c·t/2</span> · signaal ≈ <span class="f">ρ/R²</span> → bereik zwart (5 %) ≈ <span class="f">√(5/10)</span> × bereik@10 % · puntafstand = <span class="f">d·Δθ</span> · hoekfout geeft <span class="f">d·tan α</span> · verplaatsing tijdens scan = <span class="f">v/f</span> · stopafstand ≈ <span class="f">v·t<sub>r</sub> + v²/(2a)</span></p>
-      </section>
-    </div>
+    <div class="pane" id="pane-meas" hidden><div id="meas"></div></div>
     <div class="pane" id="pane-exp" hidden>
       <section><p class="hint">Klik op <b>Instellen</b>: de simulator springt naar de juiste instelling. Voer de opdracht uit en open pas daarna het antwoord.</p></section>
       <section id="exps"></section>

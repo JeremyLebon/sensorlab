@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Lidar-simulator 3D — Autonome mobiliteit & AI</title>
+<title>Sensorlab — Autonome mobiliteit & AI</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -37,12 +37,11 @@ body{background:var(--bg);color:var(--fg);font:15px/1.45 var(--f-body);display:f
 .name{font:700 22px/1 var(--f-display);letter-spacing:.01em}
 .sub{font:500 12px var(--f-mono);color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
 .layout{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 360px}
-.views{display:grid;grid-template-columns:1fr 1fr;min-width:0;min-height:0}
-.views[data-l="world"]{grid-template-columns:1fr}.views[data-l="world"] #pcvStage{display:none}
-.views[data-l="pcv"]{grid-template-columns:1fr}.views[data-l="pcv"] #stage{display:none}
+.views{display:grid;grid-template-columns:repeat(var(--n,2),minmax(0,1fr));min-width:0;min-height:0}
 .stage{position:relative;min-width:0;min-height:420px;overflow:hidden}
 #stage{background:var(--sky)}
-#pcvStage{background:#05080a;border-left:1px solid var(--line)}
+/* venster van een sensor (puntenwolk, radarbeeld): altijd donker */
+.sview{background:#05080a;border-left:1px solid var(--line)}
 .stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
 .loading{position:absolute;inset:0;display:grid;place-items:center;font:500 14px var(--f-mono);color:var(--muted)}
 .hud{position:absolute;left:12px;top:12px;font:12px/1.6 var(--f-mono);background:color-mix(in srgb,var(--surface) 88%,transparent);
@@ -54,7 +53,7 @@ body{background:var(--bg);color:var(--fg);font:15px/1.45 var(--f-body);display:f
 .tb button.on{background:var(--fg);color:var(--surface)}
 #views{left:12px;bottom:12px}
 #modes{left:12px;bottom:52px}
-#drive{right:12px;bottom:52px}
+#drive{right:12px;top:12px}
 #drive button.on{background:var(--acc);color:var(--surface)}
 .seg{display:flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
 .seg button{border:0;border-right:1px solid var(--line);background:transparent;color:var(--fg);font:500 13px var(--f-body);padding:6px 11px;cursor:pointer}
@@ -74,8 +73,10 @@ body{background:var(--bg);color:var(--fg);font:15px/1.45 var(--f-body);display:f
 .pcvleg{position:absolute;right:10px;bottom:10px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;font:12px var(--f-mono);color:#9fb3bd;background:rgba(13,20,24,.8);padding:4px 8px;border-radius:5px;max-width:calc(100% - 20px)}
 .pcvleg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
 .pcvleg .barc{width:90px;height:9px;border-radius:2px;display:inline-block;vertical-align:-1px;margin:0 4px}
-#pcvStage:fullscreen{width:100vw;height:100vh}
-.views[data-l="split"] #legend{display:none}
+.sview:fullscreen{width:100vw;height:100vh}
+.exph{margin:6px 0 0;font:600 12px var(--f-mono);text-transform:uppercase;letter-spacing:.1em;color:var(--acc)}
+.meas-head h2.big{font:700 18px var(--f-display);color:var(--fg);text-transform:none;letter-spacing:0}
+#sensorSel{align-self:flex-start}
 
 .panel{border-left:1px solid var(--line);background:var(--surface);overflow-y:scroll;min-width:0;min-height:0;overscroll-behavior:contain}
 .tabs{display:flex;position:sticky;top:0;z-index:2;background:var(--surface);border-bottom:1px solid var(--line)}
@@ -113,8 +114,8 @@ button.act{align-self:flex-start;font:600 13px var(--f-body);padding:6px 12px;bo
 .f{font:12px var(--f-mono)}
 .cmp td{font:13px/1.4 var(--f-body);text-align:left;padding:6px 4px}
 .cmp td:first-child{font-weight:600}
-@media (max-width:1100px){.views{grid-template-columns:1fr;grid-template-rows:1fr 1fr}.views[data-l="world"],.views[data-l="pcv"]{grid-template-rows:1fr}#pcvStage{border-left:0;border-top:1px solid var(--line)}}
-@media (max-width:860px){.layout{grid-template-columns:1fr;grid-template-rows:78vh auto}.panel{border-left:0;border-top:1px solid var(--line)}.legend{display:none}.stage{min-height:260px}.hud{font-size:10.5px;padding:6px 8px}#drive{top:auto;bottom:92px}}
+@media (max-width:1100px){.views{grid-template-columns:1fr;grid-template-rows:repeat(var(--n,2),minmax(0,1fr))}.sview{border-left:0;border-top:1px solid var(--line)}}
+@media (max-width:860px){.layout{grid-template-columns:1fr;grid-template-rows:78vh auto}.panel{border-left:0;border-top:1px solid var(--line)}.legend{display:none}.stage{min-height:260px}.hud{font-size:10.5px;padding:6px 8px}}
 
 </style>
 <script type="importmap">
@@ -126,16 +127,12 @@ button.act{align-self:flex-start;font:600 13px var(--f-body);padding:6px 12px;bo
 </head>
 <body>
 <header class="bar">
-  <div class="brand"><span class="name">Lidar-simulator 3D</span><span class="sub">Autonome mobiliteit &amp; AI · labo sensoren</span></div>
-  <div class="seg" id="layoutSeg" role="group" aria-label="Weergave">
-    <button data-l="world">3D-wereld</button>
-    <button data-l="split" class="on">Naast elkaar</button>
-    <button data-l="pcv">Enkel puntenwolk</button>
-  </div>
+  <div class="brand"><span class="name">Sensorlab</span><span class="sub">Autonome mobiliteit &amp; AI · labo sensoren</span></div>
+  <div class="seg" id="layoutSeg" role="group" aria-label="Vensters tonen"></div>
 </header>
 <main class="layout">
-  <div class="views" id="viewsBox" data-l="split">
-    <section class="stage" id="stage">
+  <div class="views" id="viewsBox">
+    <section class="stage" id="stage" data-pane="world">
       <div class="loading" id="loading">3D laden…</div>
       <div class="hud" id="hud"></div>
       <div class="toast" id="toast"></div>
@@ -153,13 +150,7 @@ button.act{align-self:flex-start;font:600 13px var(--f-body);padding:6px 12px;bo
       </div>
       <div class="legend" id="legend"></div>
     </section>
-    <section class="stage" id="pcvStage" aria-label="Enkel de lidar-puntenwolk">
-      <div class="pcvhead" id="pcvHead"></div>
-      <div class="pcvtb" id="pcvTb">
-        <button data-pv="3d" class="on">3D</button><button data-pv="top">Boven</button><button data-pv="drv">Bestuurder</button><button id="pcvFs" title="Puntenwolk op volledig scherm (Esc = terug)">⛶</button>
-      </div>
-      <div class="pcvleg" id="pcvLeg"></div>
-    </section>
+    <!-- vensters van de sensoren worden door de sensor zelf toegevoegd (bv. sensors/lidar/pcview.js) -->
   </div>
   <aside class="panel">
     <nav class="tabs" role="tablist">
@@ -170,21 +161,7 @@ button.act{align-self:flex-start;font:600 13px var(--f-body);padding:6px 12px;bo
     </nav>
     <div class="pane" id="pane-sensor"></div>
     <div class="pane" id="pane-env" hidden></div>
-    <div class="pane" id="pane-meas" hidden>
-      <section><h2>Wat ziet de sensor?</h2><div id="objtab"></div><p class="hint">Aantal punten van de laatste scan dat werkelijk op het object valt.</p></section>
-      <section><h2>Meetwaarden</h2><div id="metrics"></div></section>
-      <section><h2>Bouwwijzen vergeleken</h2>
-        <table class="cmp">
-          <tr><td>Roterend</td><td>360° rondom, 16–128 lagen. + één sensor voor alles, bewezen, veel ROS2-drivers. − bewegende delen, duur, bewegingsvervorming, lagen ver uit elkaar op afstand.</td></tr>
-          <tr><td>Solid-state</td><td>±120° × 25°, MEMS of flash. + robuust, compact, inbouw in grille of voorruit, dicht puntenpatroon vooruit. − beperkt FOV: 3–4 sensoren voor rondom zicht.</td></tr>
-          <tr><td>2D-veiligheid</td><td>1 laag, tot 270°. + gecertificeerd (PL d), veilige uitgangen. − ziet enkel één vlak.</td></tr>
-          <tr><td>Goedkope 2D</td><td>1 laag, 360°, kort bereik. + spotgoedkoop, ideaal om SLAM te leren. − traag, gevoelig voor zon, niet veilig.</td></tr>
-        </table>
-      </section>
-      <section><h2>Formules</h2>
-        <p class="hint"><span class="f">R = c·t/2</span> · signaal ≈ <span class="f">ρ/R²</span> → bereik zwart (5 %) ≈ <span class="f">√(5/10)</span> × bereik@10 % · puntafstand = <span class="f">d·Δθ</span> · hoekfout geeft <span class="f">d·tan α</span> · verplaatsing tijdens scan = <span class="f">v/f</span> · stopafstand ≈ <span class="f">v·t<sub>r</sub> + v²/(2a)</span></p>
-      </section>
-    </div>
+    <div class="pane" id="pane-meas" hidden><div id="meas"></div></div>
     <div class="pane" id="pane-exp" hidden>
       <section><p class="hint">Klik op <b>Instellen</b>: de simulator springt naar de juiste instelling. Voer de opdracht uit en open pas daarna het antwoord.</p></section>
       <section id="exps"></section>
@@ -1763,6 +1740,22 @@ function updateSensorMesh() {
 }
 
 // src/sensors/lidar/metrics.js
+function initMeas() {
+  $("meas-lidar").insertAdjacentHTML("beforeend", `
+      <section><h2>Wat ziet de sensor?</h2><div id="objtab"></div><p class="hint">Aantal punten van de laatste scan dat werkelijk op het object valt.</p></section>
+      <section><h2>Meetwaarden</h2><div id="metrics"></div></section>
+      <section><h2>Bouwwijzen vergeleken</h2>
+        <table class="cmp">
+          <tr><td>Roterend</td><td>360\xB0 rondom, 16\u2013128 lagen. + \xE9\xE9n sensor voor alles, bewezen, veel ROS2-drivers. \u2212 bewegende delen, duur, bewegingsvervorming, lagen ver uit elkaar op afstand.</td></tr>
+          <tr><td>Solid-state</td><td>\xB1120\xB0 \xD7 25\xB0, MEMS of flash. + robuust, compact, inbouw in grille of voorruit, dicht puntenpatroon vooruit. \u2212 beperkt FOV: 3\u20134 sensoren voor rondom zicht.</td></tr>
+          <tr><td>2D-veiligheid</td><td>1 laag, tot 270\xB0. + gecertificeerd (PL d), veilige uitgangen. \u2212 ziet enkel \xE9\xE9n vlak.</td></tr>
+          <tr><td>Goedkope 2D</td><td>1 laag, 360\xB0, kort bereik. + spotgoedkoop, ideaal om SLAM te leren. \u2212 traag, gevoelig voor zon, niet veilig.</td></tr>
+        </table>
+      </section>
+      <section><h2>Formules</h2>
+        <p class="hint"><span class="f">R = c\xB7t/2</span> \xB7 signaal \u2248 <span class="f">\u03C1/R\xB2</span> \u2192 bereik zwart (5 %) \u2248 <span class="f">\u221A(5/10)</span> \xD7 bereik@10 % \xB7 puntafstand = <span class="f">d\xB7\u0394\u03B8</span> \xB7 hoekfout geeft <span class="f">d\xB7tan \u03B1</span> \xB7 verplaatsing tijdens scan = <span class="f">v/f</span> \xB7 stopafstand \u2248 <span class="f">v\xB7t<sub>r</sub> + v\xB2/(2a)</span></p>
+      </section>`);
+}
 function legendHtml() {
   const m = L.color;
   if (m === "height") return '0 m<span class="barc" style="background:linear-gradient(90deg,hsl(240,85%,50%),hsl(120,85%,53%),hsl(0,85%,56%))"></span>3 m+';
@@ -1814,7 +1807,7 @@ function metrics() {
     return lab + " (" + nl(d, 0) + ' m): <span class="' + cl(n) + '">' + n + "</span>";
   });
   const hud = (L.type === "rot" ? "roterend" : "solid-state") + " \xB7 " + L.layers + " lagen \xB7 " + L.hfov + "\xB0 \xB7 " + String(L.hres).replace(".", ",") + "\xB0 \xB7 " + L.freq + " Hz\n" + pps.toLocaleString("nl-BE") + " stralen/s \xB7 " + st.n.toLocaleString("nl-BE") + " punten" + (F.driving ? " \xB7 " + Math.round(S.speed * 3.6) + " km/h" : "") + (F.driving && L.type === "rot" && effHz > 0 && effHz < L.freq * 0.9 ? ' \xB7 <span class="w">pc haalt ' + nl(effHz, 0) + " van " + L.freq + " Hz</span>" : "") + "\n" + items.join(" \xB7 ");
-  $("hud").innerHTML = hud;
+  $("hud-lidar").innerHTML = hud + (workerCount() ? ' \xB7 <span class="g">worker \xD7' + workerCount() + "</span>" : "");
   $("pcvHead").innerHTML = "<b>PUNTENWOLK</b>  /points \xB7 " + st.n.toLocaleString("nl-BE") + " punten \xB7 " + L.freq + " Hz\nringen 10 \xB7 20 \xB7 30 \xB7 50 \xB7 100 m";
   const lg = legendHtml();
   $("legend").innerHTML = lg;
@@ -1824,7 +1817,13 @@ function metrics() {
 // src/sensors/lidar/pcview.js
 import * as THREE6 from "three";
 import { OrbitControls as OrbitControls2 } from "three/addons/controls/OrbitControls.js";
-var pcvStage = $("pcvStage");
+var pcvStage = document.createElement("section");
+pcvStage.className = "stage sview";
+pcvStage.id = "pcvStage";
+pcvStage.dataset.pane = "lidar";
+pcvStage.setAttribute("aria-label", "Lidar-puntenwolk");
+pcvStage.innerHTML = '<div class="pcvhead" id="pcvHead"></div><div class="pcvtb" id="pcvTb"><button data-pv="3d" class="on">3D</button><button data-pv="top">Boven</button><button data-pv="drv">Bestuurder</button><button id="pcvFs" title="Puntenwolk op volledig scherm (Esc = terug)">\u26F6</button></div><div class="pcvleg" id="pcvLeg"></div>';
+$("viewsBox").appendChild(pcvStage);
 var pcvR = new THREE6.WebGLRenderer({ antialias: true });
 pcvR.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 pcvStage.prepend(pcvR.domElement);
@@ -1908,7 +1907,7 @@ var lidar_default = {
   // UI-schema (tabblad Sensor)
   presets: PRESETS,
   experiments: experiments_default,
-  views: [{ stage: pcvStage, renderer: pcvR, camera: pcvCam }],
+  views: [{ id: "lidar", label: "Puntenwolk", stage: pcvStage, renderer: pcvR, camera: pcvCam }],
   // UI: na wijziging van een eigen sleutel (zonder prefix)
   onChange(k) {
     if (k === "preset" && L.preset !== "custom") Object.assign(L, PRESETS[L.preset]);
@@ -1939,6 +1938,7 @@ var lidar_default = {
   },
   // camerastandpunt "Vanuit sensor"
   init() {
+    initMeas();
     setPcvView("3d");
   },
   resetView() {
@@ -1991,8 +1991,10 @@ var lidar_default = {
     } else pcvCtl.update();
     updateBeams(dt);
   },
-  render(layout) {
-    if (layout !== "world") pcvR.render(pcvScene, pcvCam);
+  // vis = set zichtbare vensters; de legende in de 3D-wereld enkel als het puntenwolkvenster verborgen is
+  render(vis) {
+    if (vis.has("lidar")) pcvR.render(pcvScene, pcvCam);
+    $("legend").style.display = vis.has("lidar") ? "none" : "";
   },
   stats: () => STAT,
   async bench() {
@@ -2061,8 +2063,37 @@ function followCams() {
 }
 
 // src/core/layout.js
+var VIS = /* @__PURE__ */ new Set(["world"]);
+var sensorViews = () => SENSORS.flatMap((s) => s.views || []);
+function buildLayoutButtons() {
+  const seg = $("layoutSeg"), panes = [{ id: "world", label: "3D-wereld" }, ...sensorViews()];
+  seg.innerHTML = panes.map((p) => '<button data-p="' + p.id + '" title="Venster tonen/verbergen">' + p.label + "</button>").join("");
+  seg.querySelectorAll("button").forEach((b) => b.addEventListener("click", () => {
+    const n = new Set(VIS);
+    if (n.has(b.dataset.p)) {
+      if (n.size > 1) n.delete(b.dataset.p);
+    } else n.add(b.dataset.p);
+    setLayout([...n]);
+  }));
+}
+function setLayout(spec) {
+  const first = (sensorViews()[0] || {}).id;
+  const ids = Array.isArray(spec) ? spec : spec === "split" ? ["world", first] : spec === "pcv" ? [first] : [spec];
+  VIS.clear();
+  for (const i of ids) VIS.add(i);
+  const box = $("viewsBox");
+  let n = 0;
+  for (const el of box.querySelectorAll(":scope > [data-pane]")) {
+    const on = VIS.has(el.dataset.pane);
+    el.hidden = !on;
+    if (on) n++;
+  }
+  box.style.setProperty("--n", Math.max(1, n));
+  document.querySelectorAll("#layoutSeg button").forEach((b) => b.classList.toggle("on", VIS.has(b.dataset.p)));
+  requestAnimationFrame(resize);
+}
 function resize() {
-  const list = [{ stage, renderer, camera }, ...SENSORS.flatMap((s) => s.views || [])];
+  const list = [{ stage, renderer, camera }, ...sensorViews()];
   for (const v of list) {
     const b = v.stage.getBoundingClientRect();
     if (b.width < 2) continue;
@@ -2072,9 +2103,26 @@ function resize() {
   }
 }
 
+// src/core/panels.js
+function buildPanels() {
+  const m = $("meas"), h = $("hud");
+  m.innerHTML = "";
+  h.innerHTML = "";
+  for (const s of SENSORS) {
+    const d = document.createElement("div");
+    d.id = "meas-" + s.id;
+    d.className = "meas-s";
+    if (SENSORS.length > 1) d.innerHTML = '<section class="meas-head"><h2 class="big">' + s.label + "</h2></section>";
+    m.appendChild(d);
+    const l = document.createElement("div");
+    l.id = "hud-" + s.id;
+    h.appendChild(l);
+  }
+}
+
 // src/core/ui.js
 import * as THREE7 from "three";
-var CTRL = { sensor: [], env: [] };
+var CTRL = { env: [] };
 CTRL.env = [
   { g: "Wereld", items: [
     { k: "world", t: "sel", label: "Omgeving", opts: [["street", "Straat"], ["highway", "Snelweg"], ["farm", "Erf en akker"]] },
@@ -2110,54 +2158,70 @@ function fmtV(it, v) {
   if (it.fmt) return it.fmt(v);
   return (v > 0 && (it.sk || it.k).startsWith("err.") ? "+" : "") + nl(v, it.d ?? 2) + (it.u || "");
 }
-function buildControls() {
-  CTRL.sensor = [];
-  for (const s of SENSORS) for (const G of s.params) CTRL.sensor.push({ ...G, g: (SENSORS.length > 1 ? s.label + " \xB7 " : "") + G.g, items: G.items.map((it) => ({ ...it, k: s.id + "." + it.k, sk: it.k })) });
-  for (const tab of ["sensor", "env"]) {
-    const pane = $("pane-" + tab);
-    pane.innerHTML = "";
-    for (const G of CTRL[tab]) {
-      const sec = document.createElement("section");
-      sec.innerHTML = "<h2>" + G.g + "</h2>" + (G.note ? '<p class="hint">' + G.note + "</p>" : "");
-      for (const it of G.items) {
-        let el;
-        if (it.t === "chk") {
-          el = document.createElement("label");
-          el.className = "chk";
-          el.innerHTML = '<input type="checkbox"> ' + it.label;
-          const inp = el.querySelector("input");
-          inp.addEventListener("change", () => {
-            setK(it.k, inp.checked);
-            onChange(it.k);
-          });
-          ctrlEls[it.k] = { it, inp, el };
-        } else if (it.t === "sel") {
-          el = document.createElement("div");
-          el.className = "grid2";
-          el.innerHTML = "<label>" + it.label + "</label><select>" + it.opts.map((o) => '<option value="' + o[0] + '">' + o[1] + "</option>").join("") + "</select>";
-          const inp = el.querySelector("select");
-          inp.addEventListener("change", () => {
-            setK(it.k, it.num ? Number(inp.value) : inp.value);
-            onChange(it.k);
-          });
-          ctrlEls[it.k] = { it, inp, el };
-        } else {
-          el = document.createElement("label");
-          el.className = "slider";
-          el.innerHTML = "<span>" + it.label + '</span><output></output><input type="range" min="' + it.min + '" max="' + it.max + '" step="' + it.step + '">';
-          const inp = el.querySelector("input"), out = el.querySelector("output");
-          inp.addEventListener("input", () => {
-            setK(it.k, Number(inp.value));
-            out.textContent = fmtV(it, Number(inp.value));
-            onChange(it.k);
-          });
-          ctrlEls[it.k] = { it, inp, out, el };
-        }
-        sec.appendChild(el);
-      }
-      pane.appendChild(sec);
+function makeSection(G, parent) {
+  const sec = document.createElement("section");
+  sec.innerHTML = "<h2>" + G.g + "</h2>" + (G.note ? '<p class="hint">' + G.note + "</p>" : "");
+  for (const it of G.items) {
+    let el;
+    if (it.t === "chk") {
+      el = document.createElement("label");
+      el.className = "chk";
+      el.innerHTML = '<input type="checkbox"> ' + it.label;
+      const inp = el.querySelector("input");
+      inp.addEventListener("change", () => {
+        setK(it.k, inp.checked);
+        onChange(it.k);
+      });
+      ctrlEls[it.k] = { it, inp, el };
+    } else if (it.t === "sel") {
+      el = document.createElement("div");
+      el.className = "grid2";
+      el.innerHTML = "<label>" + it.label + "</label><select>" + it.opts.map((o) => '<option value="' + o[0] + '">' + o[1] + "</option>").join("") + "</select>";
+      const inp = el.querySelector("select");
+      inp.addEventListener("change", () => {
+        setK(it.k, it.num ? Number(inp.value) : inp.value);
+        onChange(it.k);
+      });
+      ctrlEls[it.k] = { it, inp, el };
+    } else {
+      el = document.createElement("label");
+      el.className = "slider";
+      el.innerHTML = "<span>" + it.label + '</span><output></output><input type="range" min="' + it.min + '" max="' + it.max + '" step="' + it.step + '">';
+      const inp = el.querySelector("input"), out = el.querySelector("output");
+      inp.addEventListener("input", () => {
+        setK(it.k, Number(inp.value));
+        out.textContent = fmtV(it, Number(inp.value));
+        onChange(it.k);
+      });
+      ctrlEls[it.k] = { it, inp, out, el };
     }
+    sec.appendChild(el);
   }
+  parent.appendChild(sec);
+}
+function showSensorTab(id) {
+  document.querySelectorAll("#pane-sensor [data-sensor]").forEach((d) => d.hidden = d.dataset.sensor !== id);
+  document.querySelectorAll("#sensorSel button").forEach((b) => b.classList.toggle("on", b.dataset.s === id));
+}
+function buildControls() {
+  const ps = $("pane-sensor");
+  ps.innerHTML = "";
+  if (SENSORS.length > 1) {
+    const sel = document.createElement("section");
+    sel.innerHTML = '<div class="seg" id="sensorSel">' + SENSORS.map((s) => '<button data-s="' + s.id + '">' + s.label + "</button>").join("") + "</div>";
+    ps.appendChild(sel);
+    sel.querySelectorAll("button").forEach((b) => b.addEventListener("click", () => showSensorTab(b.dataset.s)));
+  }
+  for (const s of SENSORS) {
+    const wrap = document.createElement("div");
+    wrap.dataset.sensor = s.id;
+    ps.appendChild(wrap);
+    for (const G of s.params) makeSection({ ...G, items: G.items.map((it) => ({ ...it, k: s.id + "." + it.k, sk: it.k })) }, wrap);
+  }
+  showSensorTab(SENSORS[0].id);
+  const pe = $("pane-env");
+  pe.innerHTML = "";
+  for (const G of CTRL.env) makeSection(G, pe);
 }
 function syncControls() {
   for (const k in ctrlEls) {
@@ -2204,12 +2268,6 @@ document.querySelectorAll(".tabs button").forEach((b) => b.addEventListener("cli
   document.querySelectorAll(".pane").forEach((p) => p.hidden = p.id !== "pane-" + b.dataset.tab);
 }));
 document.querySelectorAll("#views button").forEach((b) => b.addEventListener("click", () => setView(b.dataset.view)));
-function setLayout(l) {
-  $("viewsBox").dataset.l = l;
-  document.querySelectorAll("#layoutSeg button").forEach((b) => b.classList.toggle("on", b.dataset.l === l));
-  requestAnimationFrame(resize);
-}
-document.querySelectorAll("#layoutSeg button").forEach((b) => b.addEventListener("click", () => setLayout(b.dataset.l)));
 var mode = "orbit";
 document.querySelectorAll("#modes button").forEach((b) => b.addEventListener("click", () => {
   mode = b.dataset.mode;
@@ -2312,8 +2370,14 @@ function applyState(over) {
   if (over.layout) setLayout(over.layout);
   F.pendingCam = over.view || "free";
 }
+var expHtml = (e, i) => '<div class="exp" id="exp' + i + '"><div class="nr">EXPERIMENT ' + (i + 1) + "</div><h3>" + e.t + "</h3><p>" + e.u + '</p><p class="q">' + e.q + '</p><button class="act" data-i="' + i + '">Instellen</button><details><summary>Toon antwoord</summary><p>' + e.a + "</p></details></div>";
 function buildExps() {
-  $("exps").innerHTML = EXPS2.map((e, i) => '<div class="exp" id="exp' + i + '"><div class="nr">EXPERIMENT ' + (i + 1) + "</div><h3>" + e.t + "</h3><p>" + e.u + '</p><p class="q">' + e.q + '</p><button class="act" data-i="' + i + '">Instellen</button><details><summary>Toon antwoord</summary><p>' + e.a + "</p></details></div>").join("");
+  let n = 0, h = "";
+  for (const s of SENSORS) {
+    if (SENSORS.length > 1) h += '<h2 class="exph">' + s.label + "</h2>";
+    for (const e of s.experiments) h += expHtml(e, n++);
+  }
+  $("exps").innerHTML = h;
   $("exps").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => {
     const i = +b.dataset.i;
     applyState(EXPS2[i].set);
@@ -2391,9 +2455,8 @@ function frame(now) {
   for (const s of SENSORS) s.animate(dt);
   updateRain(dt);
   updateDust(dt);
-  const l = $("viewsBox").dataset.l;
-  if (l !== "pcv") renderer.render(scene, camera);
-  for (const s of SENSORS) s.render(l);
+  if (VIS.has("world")) renderer.render(scene, camera);
+  for (const s of SENSORS) s.render(VIS);
   requestAnimationFrame(frame);
 }
 function start() {
@@ -2402,6 +2465,8 @@ function start() {
     themeColors();
     updateFog();
   });
+  buildPanels();
+  buildLayoutButtons();
   buildControls();
   buildExps();
   syncControls();
@@ -2411,7 +2476,7 @@ function start() {
   resize();
   setView("free");
   for (const s of SENSORS) if (s.init) s.init();
-  if (innerWidth < 860) setLayout("world");
+  setLayout(innerWidth < 860 ? ["world"] : ["world", ...SENSORS.map((s) => s.views[0].id)]);
   requestAnimationFrame(frame);
   window.__sim = { EGO, S, SENSORS, applyState, EXPS: EXPS2, stat: SENSORS[0].stats, setLayout, W: () => W, bench: SENSORS[0].bench };
 }

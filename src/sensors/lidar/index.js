@@ -13,7 +13,8 @@ import {mountX} from './model.js';
 import {fullScan,sweepStep,moveDynamicPoints,computeStats,updateRate,STAT,PB,scanIdle,whenIdle,setWorkers,workerCount,debugColMs} from './scan.js';
 import {updateBeams} from './pointcloud.js';
 import {updateSensorMesh} from './mount3d.js';
-import {metrics} from './metrics.js';
+import {metrics,initMeas} from './metrics.js';
+import {$} from '../../core/util.js';
 import {pcvStage,pcvR,pcvScene,pcvCam,pcvCtl,pcvWorld,pcvEgo,pcvSensor,YAX,pcvView,setPcvView} from './pcview.js';
 
 let scanAcc=0,liveAcc=0,lastMetrics=0,needMetrics=false;
@@ -26,7 +27,7 @@ export default {
   params,                      // UI-schema (tabblad Sensor)
   presets:PRESETS,
   experiments:EXPS,
-  views:[{stage:pcvStage,renderer:pcvR,camera:pcvCam}],
+  views:[{id:'lidar',label:'Puntenwolk',stage:pcvStage,renderer:pcvR,camera:pcvCam}],
   // UI: na wijziging van een eigen sleutel (zonder prefix)
   onChange(k){
     if(k==='preset'&&L.preset!=='custom')Object.assign(L,PRESETS[L.preset]);
@@ -42,7 +43,7 @@ export default {
     for(const k in ns)L[k]=k==='err'?Object.assign({},ns.err):ns[k];
   },
   eye(){return {x:mountX(),h:L.mountH};},   // camerastandpunt "Vanuit sensor"
-  init(){setPcvView('3d');},
+  init(){initMeas();setPcvView('3d');},
   resetView(){setPcvView(pcvView);},
   // 3D-model op de wagen en het voertuigframe van het puntenwolkvenster bijwerken
   update3d(){
@@ -63,7 +64,8 @@ export default {
     if(pcvView==='drv'){pcvCam.position.set(-0.6,1.25,0);pcvCam.lookAt(30,0.6,0);}else pcvCtl.update();
     updateBeams(dt);
   },
-  render(layout){if(layout!=='world')pcvR.render(pcvScene,pcvCam);},
+  // vis = set zichtbare vensters; de legende in de 3D-wereld enkel als het puntenwolkvenster verborgen is
+  render(vis){if(vis.has('lidar'))pcvR.render(pcvScene,pcvCam);$('legend').style.display=vis.has('lidar')?'none':'';},
   stats:()=>STAT,
   async bench(){await whenIdle();const t=performance.now();fullScan(0);await whenIdle();computeStats();return performance.now()-t;},
   setWorkers, workerCount, whenIdle,

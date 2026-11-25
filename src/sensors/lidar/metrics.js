@@ -4,8 +4,23 @@ import {S,F} from '../../core/state.js';
 import {L} from './state.js';
 import {W} from '../../core/world.js';
 import {effRange,mountX} from './model.js';
-import {STAT,effHz} from './scan.js';
+import {STAT,effHz,workerCount} from './scan.js';
 import {SRCCOL,SRCNAME} from './pointcloud.js';
+// statische inhoud van het meetblok (tabblad Meting); core/panels.js maakt #meas-lidar aan
+export function initMeas(){$('meas-lidar').insertAdjacentHTML('beforeend',`
+      <section><h2>Wat ziet de sensor?</h2><div id="objtab"></div><p class="hint">Aantal punten van de laatste scan dat werkelijk op het object valt.</p></section>
+      <section><h2>Meetwaarden</h2><div id="metrics"></div></section>
+      <section><h2>Bouwwijzen vergeleken</h2>
+        <table class="cmp">
+          <tr><td>Roterend</td><td>360° rondom, 16–128 lagen. + één sensor voor alles, bewezen, veel ROS2-drivers. − bewegende delen, duur, bewegingsvervorming, lagen ver uit elkaar op afstand.</td></tr>
+          <tr><td>Solid-state</td><td>±120° × 25°, MEMS of flash. + robuust, compact, inbouw in grille of voorruit, dicht puntenpatroon vooruit. − beperkt FOV: 3–4 sensoren voor rondom zicht.</td></tr>
+          <tr><td>2D-veiligheid</td><td>1 laag, tot 270°. + gecertificeerd (PL d), veilige uitgangen. − ziet enkel één vlak.</td></tr>
+          <tr><td>Goedkope 2D</td><td>1 laag, 360°, kort bereik. + spotgoedkoop, ideaal om SLAM te leren. − traag, gevoelig voor zon, niet veilig.</td></tr>
+        </table>
+      </section>
+      <section><h2>Formules</h2>
+        <p class="hint"><span class="f">R = c·t/2</span> · signaal ≈ <span class="f">ρ/R²</span> → bereik zwart (5 %) ≈ <span class="f">√(5/10)</span> × bereik@10 % · puntafstand = <span class="f">d·Δθ</span> · hoekfout geeft <span class="f">d·tan α</span> · verplaatsing tijdens scan = <span class="f">v/f</span> · stopafstand ≈ <span class="f">v·t<sub>r</sub> + v²/(2a)</span></p>
+      </section>`);}
 export function legendHtml(){const m=L.color;
   if(m==='height')return '0 m<span class="barc" style="background:linear-gradient(90deg,hsl(240,85%,50%),hsl(120,85%,53%),hsl(0,85%,56%))"></span>3 m+';
   if(m==='class')return '<span><i style="background:#8a949e"></i>grond (z &lt; 0,2 m)</span><span><i style="background:#ff9a1f"></i>obstakel</span>';
@@ -41,7 +56,7 @@ export function metrics(){
     return lab+' ('+nl(d,0)+' m): <span class="'+cl(n)+'">'+n+'</span>';});
   const hud=(L.type==='rot'?'roterend':'solid-state')+' · '+L.layers+' lagen · '+L.hfov+'° · '+String(L.hres).replace('.',',')+'° · '+L.freq+' Hz\n'+
     pps.toLocaleString('nl-BE')+' stralen/s · '+st.n.toLocaleString('nl-BE')+' punten'+(F.driving?' · '+Math.round(S.speed*3.6)+' km/h':'')+(F.driving&&L.type==='rot'&&effHz>0&&effHz<L.freq*0.9?' · <span class="w">pc haalt '+nl(effHz,0)+' van '+L.freq+' Hz</span>':'')+'\n'+items.join(' · ');
-  $('hud').innerHTML=hud;
+  $('hud-lidar').innerHTML=hud+(workerCount()?' · <span class="g">worker ×'+workerCount()+'</span>':'');
   $('pcvHead').innerHTML='<b>PUNTENWOLK</b>  /points · '+st.n.toLocaleString('nl-BE')+' punten · '+L.freq+' Hz\nringen 10 · 20 · 30 · 50 · 100 m';
   const lg=legendHtml();$('legend').innerHTML=lg;$('pcvLeg').innerHTML=lg;
 }

@@ -7,9 +7,8 @@ import {W,TDX} from './world.js';
 import {renderer,camera,ground,applyObjMode,themeColors} from './scene.js';
 import {updateFog} from './weather.js';
 import {view,setView} from './camera.js';
-import {resize} from './layout.js';
 import {SENSORS,SMAP} from './sensors.js';
-const CTRL={sensor:[],env:[]};   // sensor: per sensor gevuld in buildControls (sleutels met prefix "<id>.")
+const CTRL={env:[]};   // tabblad Sensor komt uit sensor.params (sleutels met prefix "<id>.")
 CTRL.env=[
   {g:'Wereld',items:[
    {k:'world',t:'sel',label:'Omgeving',opts:[['street','Straat'],['highway','Snelweg'],['farm','Erf en akker']]},
@@ -30,21 +29,32 @@ const getK=k=>{const [o,p]=root(k);return p.reduce((a,q)=>a[q],o);};
 function setK(k,v){let [o,p]=root(k);for(let i=0;i<p.length-1;i++)o=o[p[i]];o[p[p.length-1]]=v;}
 const ctrlEls={};
 function fmtV(it,v){if(it.fmt)return it.fmt(v);return(v>0&&(it.sk||it.k).startsWith('err.')?'+':'')+nl(v,it.d??2)+(it.u||'');}
+function makeSection(G,parent){
+  const sec=document.createElement('section');sec.innerHTML='<h2>'+G.g+'</h2>'+(G.note?'<p class="hint">'+G.note+'</p>':'');
+  for(const it of G.items){let el;
+    if(it.t==='chk'){el=document.createElement('label');el.className='chk';el.innerHTML='<input type="checkbox"> '+it.label;const inp=el.querySelector('input');
+      inp.addEventListener('change',()=>{setK(it.k,inp.checked);onChange(it.k);});ctrlEls[it.k]={it,inp,el};}
+    else if(it.t==='sel'){el=document.createElement('div');el.className='grid2';el.innerHTML='<label>'+it.label+'</label><select>'+it.opts.map(o=>'<option value="'+o[0]+'">'+o[1]+'</option>').join('')+'</select>';
+      const inp=el.querySelector('select');inp.addEventListener('change',()=>{setK(it.k,it.num?Number(inp.value):inp.value);onChange(it.k);});ctrlEls[it.k]={it,inp,el};}
+    else{el=document.createElement('label');el.className='slider';el.innerHTML='<span>'+it.label+'</span><output></output><input type="range" min="'+it.min+'" max="'+it.max+'" step="'+it.step+'">';
+      const inp=el.querySelector('input'),out=el.querySelector('output');
+      inp.addEventListener('input',()=>{setK(it.k,Number(inp.value));out.textContent=fmtV(it,Number(inp.value));onChange(it.k);});ctrlEls[it.k]={it,inp,out,el};}
+    sec.appendChild(el);}
+  parent.appendChild(sec);
+}
+// tabblad Sensor: per sensor een eigen blok; bij meer dan één sensor een keuzeknop bovenaan
+export function showSensorTab(id){
+  document.querySelectorAll('#pane-sensor [data-sensor]').forEach(d=>d.hidden=d.dataset.sensor!==id);
+  document.querySelectorAll('#sensorSel button').forEach(b=>b.classList.toggle('on',b.dataset.s===id));
+}
 export function buildControls(){
-  CTRL.sensor=[];
-  for(const s of SENSORS)for(const G of s.params)CTRL.sensor.push({...G,g:(SENSORS.length>1?s.label+' · ':'')+G.g,items:G.items.map(it=>({...it,k:s.id+'.'+it.k,sk:it.k}))});
-  for(const tab of ['sensor','env']){const pane=$('pane-'+tab);pane.innerHTML='';
-    for(const G of CTRL[tab]){const sec=document.createElement('section');sec.innerHTML='<h2>'+G.g+'</h2>'+(G.note?'<p class="hint">'+G.note+'</p>':'');
-      for(const it of G.items){let el;
-        if(it.t==='chk'){el=document.createElement('label');el.className='chk';el.innerHTML='<input type="checkbox"> '+it.label;const inp=el.querySelector('input');
-          inp.addEventListener('change',()=>{setK(it.k,inp.checked);onChange(it.k);});ctrlEls[it.k]={it,inp,el};}
-        else if(it.t==='sel'){el=document.createElement('div');el.className='grid2';el.innerHTML='<label>'+it.label+'</label><select>'+it.opts.map(o=>'<option value="'+o[0]+'">'+o[1]+'</option>').join('')+'</select>';
-          const inp=el.querySelector('select');inp.addEventListener('change',()=>{setK(it.k,it.num?Number(inp.value):inp.value);onChange(it.k);});ctrlEls[it.k]={it,inp,el};}
-        else{el=document.createElement('label');el.className='slider';el.innerHTML='<span>'+it.label+'</span><output></output><input type="range" min="'+it.min+'" max="'+it.max+'" step="'+it.step+'">';
-          const inp=el.querySelector('input'),out=el.querySelector('output');
-          inp.addEventListener('input',()=>{setK(it.k,Number(inp.value));out.textContent=fmtV(it,Number(inp.value));onChange(it.k);});ctrlEls[it.k]={it,inp,out,el};}
-        sec.appendChild(el);}
-      pane.appendChild(sec);}}
+  const ps=$('pane-sensor');ps.innerHTML='';
+  if(SENSORS.length>1){const sel=document.createElement('section');sel.innerHTML='<div class="seg" id="sensorSel">'+SENSORS.map(s=>'<button data-s="'+s.id+'">'+s.label+'</button>').join('')+'</div>';ps.appendChild(sel);
+    sel.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>showSensorTab(b.dataset.s)));}
+  for(const s of SENSORS){const wrap=document.createElement('div');wrap.dataset.sensor=s.id;ps.appendChild(wrap);
+    for(const G of s.params)makeSection({...G,items:G.items.map(it=>({...it,k:s.id+'.'+it.k,sk:it.k}))},wrap);}
+  showSensorTab(SENSORS[0].id);
+  const pe=$('pane-env');pe.innerHTML='';for(const G of CTRL.env)makeSection(G,pe);
 }
 export function syncControls(){for(const k in ctrlEls){const c=ctrlEls[k],v=getK(k);
   if(c.it.t==='chk')c.inp.checked=!!v;else{c.inp.value=v;if(c.out)c.out.textContent=fmtV(c.it,v);}
@@ -64,8 +74,6 @@ document.querySelectorAll('.tabs button').forEach(b=>b.addEventListener('click',
   document.querySelectorAll('.tabs button').forEach(x=>x.setAttribute('aria-selected',x===b));
   document.querySelectorAll('.pane').forEach(p=>p.hidden=p.id!=='pane-'+b.dataset.tab);}));
 document.querySelectorAll('#views button').forEach(b=>b.addEventListener('click',()=>setView(b.dataset.view)));
-export function setLayout(l){$('viewsBox').dataset.l=l;document.querySelectorAll('#layoutSeg button').forEach(b=>b.classList.toggle('on',b.dataset.l===l));requestAnimationFrame(resize);}
-document.querySelectorAll('#layoutSeg button').forEach(b=>b.addEventListener('click',()=>setLayout(b.dataset.l)));
 let mode='orbit';
 document.querySelectorAll('#modes button').forEach(b=>b.addEventListener('click',()=>{mode=b.dataset.mode;
   document.querySelectorAll('#modes button').forEach(x=>x.classList.toggle('on',x===b));if(mode!=='orbit')toast('Klik op de grond om te plaatsen');}));

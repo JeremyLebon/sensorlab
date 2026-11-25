@@ -5,8 +5,9 @@ import {W,TDX,buildWorld} from './world.js';
 import {renderer,scene,camera,controls,veh,buildWorldMeshes,themeColors} from './scene.js';
 import {updateRain,updateDust,updateFog} from './weather.js';
 import {view,setView,followCams,camSync,camSyncX} from './camera.js';
-import {resize} from './layout.js';
-import {buildControls,syncControls,setLayout} from './ui.js';
+import {resize,setLayout,buildLayoutButtons,VIS} from './layout.js';
+import {buildPanels} from './panels.js';
+import {buildControls,syncControls} from './ui.js';
 import {applyState,buildExps,EXPS} from './experiments.js';
 import {SENSORS} from './sensors.js';
 
@@ -33,18 +34,17 @@ function frame(now){
   followCams();if(view!=='sensor')controls.update();
   for(const s of SENSORS)s.animate(dt);
   updateRain(dt);updateDust(dt);
-  const l=$('viewsBox').dataset.l;
-  if(l!=='pcv')renderer.render(scene,camera);
-  for(const s of SENSORS)s.render(l);
+  if(VIS.has('world'))renderer.render(scene,camera);
+  for(const s of SENSORS)s.render(VIS);
   requestAnimationFrame(frame);
 }
 
 export function start(){
   new ResizeObserver(resize).observe($('viewsBox'));
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{themeColors();updateFog();});
-  buildControls();buildExps();syncControls();
+  buildPanels();buildLayoutButtons();buildControls();buildExps();syncControls();
   buildWorld();buildWorldMeshes();F.worldDirty=false;resize();setView('free');for(const s of SENSORS)if(s.init)s.init();
-  if(innerWidth<860)setLayout('world');
+  setLayout(innerWidth<860?['world']:['world',...SENSORS.map(s=>s.views[0].id)]);
   requestAnimationFrame(frame);
   // testhaak (tests/smoke.mjs)
   window.__sim={EGO,S,SENSORS,applyState,EXPS,stat:SENSORS[0].stats,setLayout,W:()=>W,bench:SENSORS[0].bench};

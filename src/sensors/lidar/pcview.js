@@ -4,7 +4,11 @@ import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {$,toast} from '../../core/util.js';
 import {CARL,CARC} from '../../core/vehicle.js';
 import {ptsGeo,pointUsers,pointMats} from './pointcloud.js';
-export const pcvStage=$('pcvStage');
+// venster zelf aanmaken (core/layout.js toont/verbergt het via data-pane)
+export const pcvStage=document.createElement('section');
+pcvStage.className='stage sview';pcvStage.id='pcvStage';pcvStage.dataset.pane='lidar';pcvStage.setAttribute('aria-label','Lidar-puntenwolk');
+pcvStage.innerHTML='<div class="pcvhead" id="pcvHead"></div><div class="pcvtb" id="pcvTb"><button data-pv="3d" class="on">3D</button><button data-pv="top">Boven</button><button data-pv="drv">Bestuurder</button><button id="pcvFs" title="Puntenwolk op volledig scherm (Esc = terug)">⛶</button></div><div class="pcvleg" id="pcvLeg"></div>';
+$('viewsBox').appendChild(pcvStage);
 export const pcvR=new THREE.WebGLRenderer({antialias:true});pcvR.setPixelRatio(Math.min(window.devicePixelRatio,2));pcvStage.prepend(pcvR.domElement);
 export const pcvScene=new THREE.Scene();pcvScene.background=new THREE.Color(0x05080a);
 export const pcvCam=new THREE.PerspectiveCamera(55,1,0.05,1200);
