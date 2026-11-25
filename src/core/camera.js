@@ -1,8 +1,7 @@
 /* core/camera.js — camerastandpunten van de 3D-wereld; volgt de wagen tijdens het rijden */
 import {S,EGO} from './state.js';
 import {camera,controls} from './scene.js';
-import {mountX} from '../sensors/lidar/model.js';
-import {pcvView,pcvCam} from '../sensors/lidar/pcview.js';
+import {SENSORS} from './sensors.js';
 export let view='free';
 export function setView(v){view=v;document.querySelectorAll('#views button').forEach(b=>b.classList.toggle('on',b.dataset.view===v));
   const x=S.vx,z=-S.vy;controls.enabled=v!=='sensor';
@@ -15,7 +14,6 @@ export function camSync(){lastVx=S.vx;lastVy=S.vy;}   // begin van elk frame en 
 export function camSyncX(){lastVx=S.vx;}
 export function followCams(){
   const d=S.vx-lastVx,dz=-(S.vy-lastVy);
-  if(view==='sensor'){const mx=mountX()+0.12,c=Math.cos(EGO.yaw),s2=Math.sin(EGO.yaw);camera.position.set(S.vx+mx*c,S.mountH+0.05,-(S.vy+mx*s2));camera.lookAt(S.vx+mx*c+20*c,S.mountH-1.0,-(S.vy+mx*s2+20*s2));}
+  if(view==='sensor'){const e=SENSORS[0].eye(),mx=e.x+0.12,c=Math.cos(EGO.yaw),s2=Math.sin(EGO.yaw);camera.position.set(S.vx+mx*c,e.h+0.05,-(S.vy+mx*s2));camera.lookAt(S.vx+mx*c+20*c,e.h-1.0,-(S.vy+mx*s2+20*s2));}
   else if(d!==0||dz!==0){camera.position.x+=d;controls.target.x+=d;camera.position.z+=dz;controls.target.z+=dz;}
-  if(pcvView==='drv'){pcvCam.position.set(-0.6,1.25,0);pcvCam.lookAt(30,0.6,0);}
 }

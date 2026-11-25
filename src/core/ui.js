@@ -2,17 +2,14 @@
 import * as THREE from 'three';
 import {$,nl,toast} from './util.js';
 import {S,EGO,F,WORLDSTART} from './state.js';
-import {CARL,carTop} from './vehicle.js';
+import {CARL} from './vehicle.js';
 import {W,TDX} from './world.js';
 import {renderer,camera,ground,applyObjMode,themeColors} from './scene.js';
 import {updateFog} from './weather.js';
 import {view,setView} from './camera.js';
 import {resize} from './layout.js';
-import {pcvView,setPcvView} from '../sensors/lidar/pcview.js';
-import {PRESETS,SENSORKEYS} from '../sensors/lidar/presets.js';
-import {mountX} from '../sensors/lidar/model.js';
-import lidarParams from '../sensors/lidar/controls.js';
-const CTRL={sensor:lidarParams,env:[]};
+import {SENSORS,SMAP} from './sensors.js';
+const CTRL={sensor:[],env:[]};   // sensor: per sensor gevuld in buildControls (sleutels met prefix "<id>.")
 CTRL.env=[
   {g:'Wereld',items:[
    {k:'world',t:'sel',label:'Omgeving',opts:[['street','Straat'],['highway','Snelweg'],['farm','Erf en akker']]},
@@ -25,18 +22,18 @@ CTRL.env=[
    {k:'wet',t:'chk',label:'Nat wegdek (spiegelend)'},
    {k:'interf',t:'chk',label:'Storing door andere lidar'}]},
   {g:'Weergave',items:[
-   {k:'color',t:'sel',label:'Kleur punten',opts:[['height','Hoogte (berekend)'],['class','Grond / obstakel'],['intensity','Intensiteit'],['layer','Laag'],['source','Werkelijke oorzaak']]},
-   {k:'objects',t:'sel',label:'Objecten',opts:[['full','Volledig'],['ghost','Doorschijnend'],['hidden','Verborgen (enkel punten)']]},
-   {k:'psize',label:'Puntgrootte',min:0.5,max:3,step:0.25,fmt:v=>nl(v,2)+'×'},
-   {k:'beams',t:'chk',label:'Stralen tonen (sweep vertraagd)'},
-   {k:'live',t:'chk',label:'Ruis en weer per scan vernieuwen'}]}
+   {k:'objects',t:'sel',label:'Objecten',opts:[['full','Volledig'],['ghost','Doorschijnend'],['hidden','Verborgen (enkel punten)']]}]}
  ];
-const getK=k=>k.split('.').reduce((o,p)=>o[p],S);
-function setK(k,v){const p=k.split('.');let o=S;for(let i=0;i<p.length-1;i++)o=o[p[i]];o[p[p.length-1]]=v;}
+// sleutel "lidar.err.yaw" → sensortoestand lidar.state.err.yaw; zonder sensorprefix → S
+function root(k){const p=k.split('.'),s=SMAP[p[0]];return s?[s.state,p.slice(1)]:[S,p];}
+const getK=k=>{const [o,p]=root(k);return p.reduce((a,q)=>a[q],o);};
+function setK(k,v){let [o,p]=root(k);for(let i=0;i<p.length-1;i++)o=o[p[i]];o[p[p.length-1]]=v;}
 const ctrlEls={};
-function fmtV(it,v){if(it.fmt)return it.fmt(v);return(v>0&&it.k.startsWith('err.')?'+':'')+nl(v,it.d??2)+(it.u||'');}
+function fmtV(it,v){if(it.fmt)return it.fmt(v);return(v>0&&(it.sk||it.k).startsWith('err.')?'+':'')+nl(v,it.d??2)+(it.u||'');}
 export function buildControls(){
-  for(const tab of ['sensor','env']){const root=$('pane-'+tab);root.innerHTML='';
+  CTRL.sensor=[];
+  for(const s of SENSORS)for(const G of s.params)CTRL.sensor.push({...G,g:(SENSORS.length>1?s.label+' · ':'')+G.g,items:G.items.map(it=>({...it,k:s.id+'.'+it.k,sk:it.k}))});
+  for(const tab of ['sensor','env']){const pane=$('pane-'+tab);pane.innerHTML='';
     for(const G of CTRL[tab]){const sec=document.createElement('section');sec.innerHTML='<h2>'+G.g+'</h2>'+(G.note?'<p class="hint">'+G.note+'</p>':'');
       for(const it of G.items){let el;
         if(it.t==='chk'){el=document.createElement('label');el.className='chk';el.innerHTML='<input type="checkbox"> '+it.label;const inp=el.querySelector('input');
@@ -47,18 +44,16 @@ export function buildControls(){
           const inp=el.querySelector('input'),out=el.querySelector('output');
           inp.addEventListener('input',()=>{setK(it.k,Number(inp.value));out.textContent=fmtV(it,Number(inp.value));onChange(it.k);});ctrlEls[it.k]={it,inp,out,el};}
         sec.appendChild(el);}
-      root.appendChild(sec);}}
+      pane.appendChild(sec);}}
 }
 export function syncControls(){for(const k in ctrlEls){const c=ctrlEls[k],v=getK(k);
   if(c.it.t==='chk')c.inp.checked=!!v;else{c.inp.value=v;if(c.out)c.out.textContent=fmtV(c.it,v);}
-  const dis=(k==='vfov'&&S.layers===1)||(k==='dustD'&&!S.dust)||(k==='deskew'&&S.type!=='rot');
+  const p=k.split('.'),s=SMAP[p[0]],dis=s?!!(s.disabled&&s.disabled(p.slice(1).join('.'))):(k==='dustD'&&!S.dust);
   c.inp.disabled=dis;c.el.classList.toggle('dis',dis);}}
-function fixMount(){const min=S.mount==='front'?0.1:carTop(mountX())+0.08;if(S.mountH<min){S.mountH=+min.toFixed(2);toast('Op deze plaats: montagehoogte minstens '+nl(S.mountH,2)+' m');}}
 function onChange(k){
-  if(k==='preset'&&S.preset!=='custom')Object.assign(S,PRESETS[S.preset]);
-  else if(SENSORKEYS.includes(k)){S.preset='custom';if(k==='type'&&S.type==='static'&&S.hfov>180)S.hfov=120;}
+  const p=k.split('.'),s=SMAP[p[0]];
+  if(s&&s.onChange)s.onChange(p.slice(1).join('.'));
   if(k==='world'){const w=WORLDSTART[S.world];S.ped={...w.ped};S.dog={...w.dog};S.speed=w.speed;S.vx=0;S.vy=0;EGO.yaw=0;EGO.vyRate=0;EGO.target=0;TDX.clear();F.worldDirty=true;resetCams();}
-  if(['mount','mountH','preset'].includes(k))fixMount();
   if(k==='objects')applyObjMode();
   if(k==='fog')updateFog();
   if(k==='wet')themeColors();
@@ -76,7 +71,7 @@ document.querySelectorAll('#modes button').forEach(b=>b.addEventListener('click'
   document.querySelectorAll('#modes button').forEach(x=>x.classList.toggle('on',x===b));if(mode!=='orbit')toast('Klik op de grond om te plaatsen');}));
 export function setDriving(on){F.driving=on;$('driveBtn').classList.toggle('on',on);$('driveBtn').textContent=on?'❚❚ Stoppen':'▶ Rijden';F.dirty=true;}
 $('driveBtn').addEventListener('click',()=>setDriving(!F.driving));
-export function resetCams(){setView(view==='sensor'?'free':view);setPcvView(pcvView);}
+export function resetCams(){setView(view==='sensor'?'free':view);for(const s of SENSORS)if(s.resetView)s.resetView();}
 function changeLane(dir){const ls=W.lanes||[0];let i=ls.reduce((b,y,k)=>Math.abs(y-EGO.target)<Math.abs(ls[b]-EGO.target)?k:b,0);const ni=i+dir;
   if(ni<0||ni>=ls.length){toast(ls.length<2?'Hier is maar één rijstrook':'Geen rijstrook meer aan die kant');return;}EGO.target=ls[ni];}
 $('laneL').addEventListener('click',()=>changeLane(1));$('laneR').addEventListener('click',()=>changeLane(-1));

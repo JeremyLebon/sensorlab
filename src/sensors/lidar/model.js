@@ -2,10 +2,11 @@
    Signaal: ρ · T · exp(-2αR) / R²  tegen drempel 0,1 / Rmax²  (datasheetbereik @10 %) */
 import {D2R,fmod} from '../../core/util.js';
 import {S} from '../../core/state.js';
+import {L} from './state.js';
 import {VEHB,MOUNTS} from '../../core/vehicle.js';
 import {W,isMark,onPrims} from '../../core/world.js';
 export const GROUND={name:'grond',rho:0.2};
-export function layerEls(){const L=S.layers,a=[];if(L===1)return[S.vcenter*D2R];for(let j=0;j<L;j++)a.push((S.vcenter-S.vfov/2+S.vfov*j/(L-1))*D2R);return a;}
+export function layerEls(){const nL=L.layers,a=[];if(nL===1)return[L.vcenter*D2R];for(let j=0;j<nL;j++)a.push((L.vcenter-L.vfov/2+L.vfov*j/(nL-1))*D2R);return a;}
 export function selfBlock(ox,oy,oz,dx,dy,tE){
   for(const B of VEHB){let tmin=0,tmax=1e9;
     if(Math.abs(dx)<1e-12){if(ox<B.x0||ox>B.x1)continue;}else{let a=(B.x0-ox)/dx,b=(B.x1-ox)/dx;if(a>b)[a,b]=[b,a];tmin=Math.max(tmin,a);tmax=Math.min(tmax,b);}
@@ -48,7 +49,7 @@ export function cast(rng,ox,oy,oz,az,el){
   return{dx,dy,cE,hT,hO,trans,glassHit};
 }
 export const alphaAir=()=>S.fog*0.06+S.rain*0.012;
-export const sTh=()=>0.1/(S.rmax*S.rmax);
+export const sTh=()=>0.1/(L.rmax*L.rmax);
 export function effRange(rho){const a=alphaAir(),th=sTh();let lo=0.3,hi=2000;if(rho*Math.exp(-2*a*lo)/(lo*lo)<th)return 0;
   for(let i=0;i<60;i++){const m=(lo+hi)/2;(rho*Math.exp(-2*a*m)/(m*m)>=th)?lo=m:hi=m;}return lo;}
 // src: 0 grond,1 object,2 glas,3 regen,4 mist,5 stof,6 storing,7 markering
@@ -61,7 +62,7 @@ export function measure(rng,ox,oy,oz,az,el){
       else rho=(S.wet?0.02:(W.ground==='farm'?0.15:0.2))*se;}
     if(r.glassHit){rho=0.08;src=2;}
     if(r.hO.thin)rho*=Math.min(1,r.hO.thin/(0.003*R+0.008));
-    let dT=1;if(span){const L=Math.max(0,Math.min(span[1],r.hT)-span[0]);dT=Math.exp(-2*kd*L/r.cE);}
+    let dT=1;if(span){const Ld=Math.max(0,Math.min(span[1],r.hT)-span[0]);dT=Math.exp(-2*kd*Ld/r.cE);}
     const sig=rho*r.trans*Math.exp(-2*a*R)*dT/(R*R);
     if(sig>=th&&R>=0.3)cands.push({R,sig,src,o:r.hO});}
   const solidR=cands.length?cands[0].R:1e9;
@@ -70,12 +71,12 @@ export function measure(rng,ox,oy,oz,az,el){
   if(S.rain>0)part(S.rain*0.012,0.0015,3,0,1e9);
   if(S.fog>0)part(S.fog*0.03,0.002,4,0,1e9);
   if(span)part(S.dustD*0.5,0.006,5,span[0]/r.cE,span[1]/r.cE);
-  if(S.interf&&rng()<0.004)cands.push({R:1+rng()*Math.min(S.rmax*0.6,40),sig:th*3,src:6,o:null});
+  if(S.interf&&rng()<0.004)cands.push({R:1+rng()*Math.min(L.rmax*0.6,40),sig:th*3,src:6,o:null});
   if(!cands.length)return null;
   let c=cands[0];
-  if(S.echo==='first'){for(const x of cands)if(x.R<c.R)c=x;}
-  else if(S.echo==='last'){for(const x of cands)if(x.R>c.R)c=x;}
+  if(L.echo==='first'){for(const x of cands)if(x.R<c.R)c=x;}
+  else if(L.echo==='last'){for(const x of cands)if(x.R>c.R)c=x;}
   else{for(const x of cands)if(x.sig>c.sig)c=x;}
   return c;
 }
-export const mountX=()=>MOUNTS[S.mount].x;
+export const mountX=()=>MOUNTS[L.mount].x;

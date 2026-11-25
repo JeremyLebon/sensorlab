@@ -6,15 +6,15 @@ import {TDX} from './world.js';
 import {applyObjMode} from './scene.js';
 import {updateFog} from './weather.js';
 import {setDriving,setLayout,syncControls,markExp} from './ui.js';
-import {PRESETS} from '../sensors/lidar/presets.js';   // TODO stap 2b: standaardsensor via de sensor-interface
-import EXPS from '../sensors/lidar/experiments.js';
+import {SENSORS} from './sensors.js';
+// alle experimenten van alle sensoren; set = {wereld/voertuig…, drive, view, layout, <sensor-id>:{…}}
+export const EXPS=SENSORS.flatMap(s=>s.experiments);
 export function applyState(over){
-  const keep={color:S.color,psize:S.psize,live:S.live};
-  const ns=JSON.parse(JSON.stringify(BASE));Object.assign(ns,keep);
-  const pr=over.preset||'vlp16';Object.assign(ns,PRESETS[pr]);ns.preset=pr;
+  const ns=JSON.parse(JSON.stringify(BASE));
   const w=WORLDSTART[over.world||'street'];ns.ped={...w.ped};ns.dog={...w.dog};ns.speed=w.speed;
-  for(const k in over){if(k==='err')Object.assign(ns.err,over.err);else if(!['drive','view','layout'].includes(k))ns[k]=over[k];}
-  for(const k in ns)S[k]=(k==='err'||k==='ped'||k==='dog')?Object.assign({},ns[k]):ns[k];
+  for(const k in over){if(!['drive','view','layout'].includes(k)&&!SENSORS.some(s=>s.id===k))ns[k]=over[k];}
+  for(const k in ns)S[k]=(k==='ped'||k==='dog')?Object.assign({},ns[k]):ns[k];
+  for(const s of SENSORS)s.reset(over[s.id]||{});
   TDX.clear();S.vy=0;EGO.yaw=0;EGO.vyRate=0;EGO.target=0;setDriving(!!over.drive);
   F.worldDirty=true;F.dirty=true;applyObjMode();updateFog();syncControls();
   if(over.layout)setLayout(over.layout);

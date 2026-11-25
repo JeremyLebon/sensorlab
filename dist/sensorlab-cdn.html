@@ -223,33 +223,14 @@ function toast(t) {
 // src/core/state.js
 var S = {
   world: "street",
-  preset: "vlp16",
-  type: "rot",
-  hfov: 360,
-  hres: 0.2,
-  layers: 16,
-  vfov: 30,
-  vcenter: 0,
-  rmax: 100,
-  freq: 10,
-  mount: "roofM",
-  mountH: 1.85,
-  err: { yaw: 0, pitch: 0, h: 0, x: 0 },
   rain: 0,
   fog: 0,
   dust: false,
   dustD: 0.6,
   wet: false,
   interf: false,
-  echo: "first",
-  noise: 0.02,
   speed: 8,
-  deskew: true,
-  color: "height",
   objects: "full",
-  beams: true,
-  live: false,
-  psize: 1,
   ped: { x: 12, y: 1.2 },
   dog: { x: 7, y: -1.8 },
   vx: 0,
@@ -468,12 +449,12 @@ function buildWorld() {
   const cyl = (o, cx, cy, r, z0, z1, vis = true) => o.parts.push({ s: "cyl", cx, cy, r, z0, z1, vis });
   const wall = (o, x1, y1, x2, y2, z0, z1, t = 0.2, vis = true) => o.parts.push({ s: "wall", x1, y1, x2, y2, z0, z1, t, vis });
   const car = (o, cx, cy, yaw, col) => {
-    const c = Math.cos(yaw), s = Math.sin(yaw), L = (lx, ly) => [cx + lx * c - ly * s, cy + lx * s + ly * c];
+    const c = Math.cos(yaw), s = Math.sin(yaw), L2 = (lx, ly) => [cx + lx * c - ly * s, cy + lx * s + ly * c];
     box(o, cx, cy, 4.66, 1.84, 0.25, 0.97, yaw, false);
-    const p = L(-0.28, 0);
+    const p = L2(-0.28, 0);
     box(o, p[0], p[1], 2.55, 1.52, 0.97, 1.43, yaw, false);
     for (const [a, b] of [[1.42, 0.82], [1.42, -0.82], [-1.42, 0.82], [-1.42, -0.82]]) {
-      const q = L(a, b);
+      const q = L2(a, b);
       box(o, q[0], q[1], 0.66, 0.22, 0, 0.66, yaw, false);
     }
     o.models.push({ k: "car", cx, cy, yaw, col: col || o.col });
@@ -954,12 +935,193 @@ function updateFog() {
   scene.fog = S.fog > 0 ? new THREE3.FogExp2(css("--sky"), S.fog * 0.045) : null;
 }
 
+// src/sensors/lidar/state.js
+var L = {
+  preset: "vlp16",
+  type: "rot",
+  hfov: 360,
+  hres: 0.2,
+  layers: 16,
+  vfov: 30,
+  vcenter: 0,
+  rmax: 100,
+  freq: 10,
+  mount: "roofM",
+  mountH: 1.85,
+  err: { yaw: 0, pitch: 0, h: 0, x: 0 },
+  echo: "first",
+  noise: 0.02,
+  deskew: true,
+  color: "height",
+  psize: 1,
+  beams: true,
+  live: false
+};
+var LBASE = JSON.parse(JSON.stringify(L));
+
+// src/sensors/lidar/controls.js
+var controls_default = [
+  { g: "Sensor", items: [
+    { k: "preset", t: "sel", label: "Voorbeeld", opts: [["vlp16", "Roterend, 16 lagen"], ["os64", "Roterend, 64 lagen"], ["hr128", "Roterend, 128 lagen, lang bereik"], ["solid", "Solid-state in grille, 120\xB0"], ["safety", "2D-veiligheidsscanner (270\xB0)"], ["lds", "Goedkope 2D (TurtleBot-klasse)"], ["custom", "\u2014 eigen instelling \u2014"]] },
+    { k: "type", t: "sel", label: "Bouwwijze", opts: [["rot", "Roterend"], ["static", "Statisch / solid-state"]] },
+    { k: "hfov", label: "Horizontale FOV", min: 20, max: 360, step: 10, u: "\xB0", d: 0 },
+    { k: "hres", t: "sel", label: "Hor. resolutie", num: true, opts: [[0.1, "0,1\xB0"], [0.2, "0,2\xB0"], [0.35, "0,35\xB0"], [0.5, "0,5\xB0"], [1, "1\xB0"], [1.6, "1,6\xB0"], [3.2, "3,2\xB0"]] },
+    { k: "layers", t: "sel", label: "Aantal lagen", num: true, opts: [1, 2, 4, 8, 16, 32, 64, 128].map((v) => [v, String(v)]) },
+    { k: "vfov", label: "Verticale FOV", min: 2, max: 90, step: 1, u: "\xB0", d: 0 },
+    { k: "vcenter", label: "Middenhoek verticaal", min: -30, max: 15, step: 1, u: "\xB0", d: 0 },
+    { k: "rmax", label: "Bereik @10 % reflectie", min: 5, max: 300, step: 5, u: " m", d: 0 },
+    { k: "freq", label: "Scanfrequentie", min: 2, max: 30, step: 1, u: " Hz", d: 0 }
+  ] },
+  { g: "Montage", items: [
+    { k: "mount", t: "sel", label: "Plaats", opts: Object.entries(MOUNTS).map(([k, m]) => [k, m.label]) },
+    { k: "mountH", label: "Montagehoogte", min: 0.1, max: 3.5, step: 0.05, u: " m", d: 2 }
+  ] },
+  { g: "Kalibratiefout", note: "Verschil tussen de werkelijke montage en wat de software denkt. De sensor in 3D staat echt scheef, de punten worden berekend alsof hij recht staat.", items: [
+    { k: "err.yaw", label: "Gierhoek (yaw)", min: -10, max: 10, step: 0.5, u: "\xB0", d: 1 },
+    { k: "err.pitch", label: "Kanteling (pitch)", min: -5, max: 5, step: 0.25, u: "\xB0", d: 2 },
+    { k: "err.h", label: "Hoogte", min: -0.5, max: 0.5, step: 0.05, u: " m", d: 2 },
+    { k: "err.x", label: "Positie voor/achter", min: -1, max: 1, step: 0.05, u: " m", d: 2 }
+  ] },
+  { g: "Verwerking", items: [
+    { k: "echo", t: "sel", label: "Echo-keuze", opts: [["first", "Eerste echo"], ["last", "Laatste echo"], ["strong", "Sterkste echo"]] },
+    { k: "noise", label: "Afstandsruis (1\u03C3)", min: 0, max: 0.15, step: 5e-3, u: " m", d: 3 },
+    { k: "deskew", t: "chk", label: "Bewegingscompensatie (deskew)" }
+  ] },
+  { g: "Weergave puntenwolk", items: [
+    { k: "color", t: "sel", label: "Kleur punten", opts: [["height", "Hoogte (berekend)"], ["class", "Grond / obstakel"], ["intensity", "Intensiteit"], ["layer", "Laag"], ["source", "Werkelijke oorzaak"]] },
+    { k: "psize", label: "Puntgrootte", min: 0.5, max: 3, step: 0.25, fmt: (v) => String(v.toFixed(2)).replace(".", ",") + "\xD7" },
+    { k: "beams", t: "chk", label: "Stralen tonen (sweep vertraagd)" },
+    { k: "live", t: "chk", label: "Ruis en weer per scan vernieuwen" }
+  ] }
+];
+
+// src/sensors/lidar/experiments.js
+var EXPS = [
+  {
+    t: "E\xE9n laag: wat mist de sensor?",
+    set: { view: "chase", lidar: { preset: "safety", color: "source" } },
+    u: "Een 2D-scanner meet in \xE9\xE9n horizontaal vlak, op de montagehoogte (hier 0,25 m in de voorbumper). Alles boven of onder dat vlak bestaat niet voor de sensor.",
+    q: "Open het tabblad <b>Meting</b>: welke objecten krijgen 0 punten? Zet daarna de <b>montagehoogte</b> op 1,00 m. Wat wordt nu w\xE9l gezien, en wat verdwijnt?",
+    a: "Op 0,25 m: slagboom, vrachtwagen-laadbak, verkeersbord en stoeprand (15 cm) worden niet gezien, en van de witte auto enkel de wielen. De vrachtwagen lijkt pas te beginnen bij de wielen, terwijl de laadbak veel eerder komt: botsing. Op 1,00 m zie je laadbak en slagboom, maar hond (0,5 m) en stoeprand verdwijnen."
+  },
+  {
+    t: "Meer lagen, meer zicht op afstand",
+    set: { ped: { x: 22, y: 1.2 }, objects: "ghost", lidar: { preset: "vlp16", color: "layer" } },
+    u: 'Tussen twee lagen zit een vaste hoek. De verticale opening groeit met de afstand: <span class="f">\u0394z \u2248 d\xB7tan(\u0394hoek)</span>. Bij 16 lagen over 30\xB0 is dat 2\xB0 per laag.',
+    q: "Hoeveel punten krijgt de voetganger (zie HUD)? Verplaats hem met <b>Persoon plaatsen</b> naar ~40 m. Kies daarna <b>64 lagen</b> en vergelijk.",
+    a: "Met 16 lagen zitten de lagen op 20 m ongeveer 0,7 m uit elkaar: slechts 2\u20133 lagen raken de voetganger, op 40 m soms maar 1. Met 64 lagen worden het er 4\xD7 zoveel. De slagboom (10 cm hoog) valt zelfs tussen de lagen door."
+  },
+  {
+    t: "Horizontale resolutie en dunne palen",
+    set: { view: "top", lidar: { preset: "vlp16", color: "source" } },
+    u: 'Horizontaal staan de stralen <span class="f">d\xB7\u0394\u03B8</span> uit elkaar. Een paal van 12 cm valt tussen twee stralen als die opening groter is dan de paal.',
+    q: "Bekijk de rij palen bij 0,2\xB0. Zet de <b>horizontale resolutie</b> op 1,6\xB0 en daarna 3,2\xB0. Vanaf welke afstand mis je palen?",
+    a: "Bij 1,6\xB0 is de opening op 10 m al 28 cm: een paal van 12 cm wordt vanaf ~4\u20135 m niet meer elke scan geraakt. Bij 3,2\xB0 verdwijnen de meeste palen."
+  },
+  {
+    t: "Zwart en wit: reflectie bepaalt het bereik",
+    set: { lidar: { preset: "vlp16", rmax: 30, color: "intensity" } },
+    u: 'Het teruggekaatste signaal is ongeveer <span class="f">\u03C1 / R\xB2</span>. Een datasheetbereik geldt bij 10 % reflectie. Een zwarte auto (5 %) kaatst veel minder terug dan een witte (70 %).',
+    q: 'Het bereik staat op 30 m @10 %. Vergelijk de punten op de <b>witte</b> en de <b>zwarte auto</b>. Verhoog het bereik tot de zwarte auto "gezien" is.',
+    a: "Effectief bereik voor 5 % \u2248 \u221A(0,05/0,1) \xD7 30 = 21 m: de zwarte auto op ~25 m valt weg, de witte niet. Vanaf ongeveer 40 m bereik verschijnt de zwarte auto. Het retroreflecterende verkeersbord geeft juist een extreem sterk signaal."
+  },
+  {
+    t: "Glas: de lidar kijkt erdoor",
+    set: { objects: "ghost", lidar: { preset: "vlp16", color: "source" } },
+    u: "Laserlicht gaat grotendeels door glas. Slechts een klein deel van de stralen kaatst terug op de glaswand.",
+    q: "Bekijk het bushokje. Hoeveel punten krijgen de <b>glaswand</b> en de <b>persoon achter glas</b>? Wat betekent dit voor een voertuig dat een glazen gevel of etalage nadert?",
+    a: "De glaswand krijgt weinig, onregelmatige punten; de persoon erachter wordt wel gezien. Glas bestaat nauwelijks in de puntenwolk. Radar en camera vullen dat aan (sensorfusie)."
+  },
+  {
+    t: "Kantelfout (pitch): fantoomobstakels",
+    set: { view: "top", lidar: { preset: "vlp16", color: "class", err: { pitch: 1 } } },
+    u: "De sensor staat in werkelijkheid 1\xB0 gekanteld (kijk naar de sensor op het dak), maar de software denkt dat hij recht staat. Punten boven 0,2 m worden als obstakel geclassificeerd.",
+    q: 'Waar verschijnen oranje "obstakels" op de grond? Zet de kanteling op \u22121\xB0. Wat verandert er?',
+    a: 'Bij +1\xB0 kijkt de sensor achteraan naar beneden: grond achter de wagen wordt te hoog berekend en wordt "obstakel" \u2192 fantoomremming bij achteruitrijden. Bij \u22121\xB0 wordt de grond v\xF3\xF3r de wagen een obstakel \u2192 noodremming zonder reden. 1\xB0 op 20 m = 35 cm hoogtefout.'
+  },
+  {
+    t: "Gierhoekfout (yaw): fout groeit met afstand",
+    set: { objects: "ghost", view: "top", lidar: { preset: "vlp16", err: { yaw: 3 } } },
+    u: 'De sensor is 3\xB0 gedraaid gemonteerd. Een hoekfout geeft een zijdelingse fout van <span class="f">d\xB7tan(3\xB0) \u2248 5 cm per meter</span>.',
+    q: "Vergelijk de puntenwolk met de doorschijnende objecten. Hoe groot is de verschuiving bij de witte auto (~16 m) en bij de vrachtwagen (~38 m)? Wat betekent dat op de snelweg op 100 m?",
+    a: "Ongeveer 0,8 m bij de auto en 2 m bij de vrachtwagen. Op 100 m is dat 5 m: een auto in de rijstrook naast je lijkt in jouw rijstrook te staan. Daarom kalibreer je op verre objecten of met een kalibratiedoel op gekende positie."
+  },
+  {
+    t: "Verloren band op de snelweg",
+    set: { world: "highway", view: "chase", lidar: { preset: "vlp16", color: "source" } },
+    u: 'Bij 108 km/h (30 m/s) is de stopafstand ongeveer <span class="f">30\xB71 + 30\xB2/(2\xB77) \u2248 94 m</span>. Een band van 25 cm hoog ligt 128 m voor de wagen in jouw rijstrook (zie HUD).',
+    q: "Krijgt de band punten? Klik op <b>Rijden</b> en kijk in het puntenwolkvenster op welke afstand de band verschijnt. Probeer daarna <b>Roterend, 128 lagen</b> en <b>Solid-state in grille</b>. Welke sensor ziet hem op tijd?",
+    a: "Met 16 lagen liggen de lagen op 100 m 3,5 m uit elkaar en raakt geen enkele laag de band: hij verschijnt pas rond 30 m, ver binnen de stopafstand. De 128-lagensensor (naar beneden gericht, lang bereik) geeft de eerste punten rond 100 m, de solid-state rond 70 m. Maar 2\u20133 punten zijn nog geen herkenbaar object: dat vraagt opvolging over meerdere scans. Lage, donkere objecten op afstand zijn de moeilijkste opgave voor snelwegpiloten."
+  },
+  {
+    t: "Rijstrookmarkering met intensiteit",
+    set: { world: "highway", view: "top", objects: "ghost", lidar: { preset: "os64", color: "intensity" } },
+    u: "Wegmarkering bevat glasparels en kaatst veel meer licht terug dan asfalt. In de intensiteit van de lidar zie je de markering dus, ook zonder camera.",
+    q: "Herken je de rijstroken in het puntenwolkvenster? Tot welke afstand? Zet daarna <b>Nat wegdek</b> aan. Wat gebeurt er met asfalt en markering?",
+    a: "De markering licht op tot ~30\u201340 m, verder komen er te weinig grondpunten (scherende hoek). Op een nat wegdek verdwijnt het asfalt bijna volledig en wordt de markering zwakker: lijnherkenning wordt onbetrouwbaar."
+  },
+  {
+    t: "Brug en portiek: obstakel of niet?",
+    set: { world: "highway", view: "chase", drive: true, lidar: { preset: "os64", color: "class" } },
+    u: "Een eenvoudig algoritme noemt alles boven 0,2 m een obstakel. Op de snelweg passeer je een portiek met borden (5,3 m) en een brug (5,4 m).",
+    q: "Wat zie je in het puntenwolkvenster als je de portiek en de brug nadert? Hoe kun je met de hoogte van de punten vermijden dat de wagen remt? Welk gevaar heeft zo'n filter?",
+    a: 'Portiek, borden en brug verschijnen oranje als "obstakel" midden boven de weg. Filter op een hoogtevenster (bv. 0,2\u20132,5 m boven de weg). Gevaar: een te laag venster mist een hoge laadbak of een te lage brug; bij een kantelfout van 1\xB0 schuift het venster op 100 m al 1,7 m.'
+  },
+  {
+    t: "Rijden met een roterende lidar",
+    set: { world: "highway", speed: 33, drive: true, view: "top", objects: "ghost", lidar: { preset: "vlp16", freq: 10, color: "height", deskew: false } },
+    u: 'Een roterende lidar doet ~0,1 s over \xE9\xE9n omwenteling. Tijdens die tijd rijdt de wagen <span class="f">v / f</span> verder: bij 120 km/h is dat 3,3 m. De scan begint en eindigt achteraan.',
+    q: "De bewegingscompensatie staat uit. Kijk naar de vangrail en de middenberm in het puntenwolkvenster (Boven). Zie je de knik achteraan? Zet de frequentie op 20 Hz en daarna <b>bewegingscompensatie</b> weer aan.",
+    a: "Achteraan sluit de scan niet aan: de vangrail maakt een sprong van ~3 m. 20 Hz halveert de fout. Deskew met odometrie of IMU corrigeert de eigen beweging. Ander verkeer beweegt ook tijdens de scan; dat lost deskew niet op."
+  },
+  {
+    t: "Regen en nat wegdek",
+    set: { world: "highway", rain: 0.8, wet: true, lidar: { preset: "vlp16", color: "source", live: true } },
+    u: "Regendruppels geven losse spikkels dicht bij de sensor en verzwakken het signaal. Een nat wegdek is spiegelend: het licht kaatst weg in plaats van terug.",
+    q: "Let op de meetwaarden <b>bereik wit/zwart</b> en <b>stopafstand</b>. Zet daarna regen op droog en het wegdek droog. Wat valt op?",
+    a: "Op het natte wegdek verdwijnen de grondpunten op afstand bijna volledig, waardoor rijbaan en markering moeilijk te detecteren zijn. De regen geeft ruispunten dichtbij en verkort het bereik, terwijl de stopafstand op nat wegdek net langer wordt."
+  },
+  {
+    t: "Stof: eerste of laatste echo?",
+    set: { world: "farm", dust: true, dustD: 0.7, ped: { x: 12, y: 0.5 }, lidar: { preset: "vlp16", color: "source" } },
+    u: "Een stofwolk (oogst, grondbewerking, onverharde weg) kaatst een deel van het licht terug. Veel lidars kunnen meerdere echo's per puls meten.",
+    q: "Met <b>eerste echo</b>: wat zie je in de stofwolk, en wordt de persoon in de wolk nog gezien? Schakel naar <b>laatste echo</b> en vergelijk. Welk nadeel heeft laatste echo?",
+    a: "Met eerste echo vormt het stof een muur van punten: een noodstop zou triggeren en de persoon wordt grotendeels gemist. Met laatste echo kijk je door het stof. Nadeel: dunne of halftransparante objecten (draad, takken, glas) v\xF3\xF3r iets anders gaan verloren."
+  },
+  {
+    t: "Persoon in het gewas en een draadafsluiting",
+    set: { world: "farm", objects: "ghost", lidar: { preset: "vlp16", color: "height" } },
+    u: "Een gewas van 0,8 m is voor de lidar een muur: alles erachter en eronder is onzichtbaar. Een draad is maar enkele millimeter dik.",
+    q: "Hoeveel punten krijgt de <b>persoon tussen het gewas</b>, en op welke hoogte liggen die punten? Wordt de <b>draadafsluiting</b> gezien?",
+    a: "Enkel het bovenlichaam boven het gewas levert punten op. De draad levert enkel punten waar een laag toevallig op draadhoogte zit: een paar losse boogjes dichtbij, geen doorlopende lijn, en op afstand niets meer."
+  },
+  {
+    t: "Statisch vs roterend, en de montageplaats",
+    set: { lidar: { preset: "solid", color: "height" } },
+    u: "Een solid-state lidar zit in de grille: geen draaiende delen, maar een beperkt gezichtsveld (120\xB0). Een roterende op het dak ziet rondom, maar het dak schermt de onderste lagen af.",
+    q: "Wat ziet de solid-state lidar niet? Kies daarna <b>Roterend, 64 lagen</b> en vergelijk <b>Dak, midden</b> met <b>Dak, boven voorruit</b>: let op % geblokkeerd en op de hond vlak voor de wagen.",
+    a: "Alles naast en achter de wagen valt buiten beeld; voor 360\xB0 zijn 3\u20135 sensoren nodig. Op het dak midden blokkeert het dak en de motorkap de onderste lagen: een hond vlak voor de bumper wordt niet gezien. Daarom combineren seriewagens een lidar achter de voorruit of in de grille met radar en ultrasoon rondom."
+  }
+];
+var experiments_default = EXPS;
+
+// src/sensors/lidar/presets.js
+var PRESETS = {
+  vlp16: { type: "rot", hfov: 360, hres: 0.2, layers: 16, vfov: 30, vcenter: 0, rmax: 100, freq: 10, mount: "roofM", mountH: 1.85 },
+  os64: { type: "rot", hfov: 360, hres: 0.35, layers: 64, vfov: 45, vcenter: 0, rmax: 80, freq: 10, mount: "roofM", mountH: 1.85 },
+  hr128: { type: "rot", hfov: 360, hres: 0.2, layers: 128, vfov: 40, vcenter: -10, rmax: 200, freq: 10, mount: "roofM", mountH: 1.85 },
+  solid: { type: "static", hfov: 120, hres: 0.2, layers: 64, vfov: 25, vcenter: -3, rmax: 200, freq: 10, mount: "front", mountH: 0.6 },
+  safety: { type: "rot", hfov: 270, hres: 0.5, layers: 1, vfov: 2, vcenter: 0, rmax: 30, freq: 25, mount: "front", mountH: 0.25 },
+  lds: { type: "rot", hfov: 360, hres: 1, layers: 1, vfov: 2, vcenter: 0, rmax: 8, freq: 5, mount: "front", mountH: 0.3 }
+};
+var SENSORKEYS = ["type", "hfov", "hres", "layers", "vfov", "vcenter", "rmax", "freq", "mount", "mountH"];
+
 // src/sensors/lidar/model.js
 var GROUND = { name: "grond", rho: 0.2 };
 function layerEls() {
-  const L = S.layers, a = [];
-  if (L === 1) return [S.vcenter * D2R];
-  for (let j = 0; j < L; j++) a.push((S.vcenter - S.vfov / 2 + S.vfov * j / (L - 1)) * D2R);
+  const nL = L.layers, a = [];
+  if (nL === 1) return [L.vcenter * D2R];
+  for (let j = 0; j < nL; j++) a.push((L.vcenter - L.vfov / 2 + L.vfov * j / (nL - 1)) * D2R);
   return a;
 }
 function selfBlock(ox, oy, oz, dx, dy, tE) {
@@ -1100,7 +1262,7 @@ function cast(rng, ox, oy, oz, az, el) {
   return { dx, dy, cE, hT, hO, trans, glassHit };
 }
 var alphaAir = () => S.fog * 0.06 + S.rain * 0.012;
-var sTh = () => 0.1 / (S.rmax * S.rmax);
+var sTh = () => 0.1 / (L.rmax * L.rmax);
 function effRange(rho) {
   const a = alphaAir(), th = sTh();
   let lo = 0.3, hi = 2e3;
@@ -1132,8 +1294,8 @@ function measure(rng, ox, oy, oz, az, el) {
     if (r.hO.thin) rho *= Math.min(1, r.hO.thin / (3e-3 * R + 8e-3));
     let dT = 1;
     if (span) {
-      const L = Math.max(0, Math.min(span[1], r.hT) - span[0]);
-      dT = Math.exp(-2 * kd * L / r.cE);
+      const Ld = Math.max(0, Math.min(span[1], r.hT) - span[0]);
+      dT = Math.exp(-2 * kd * Ld / r.cE);
     }
     const sig = rho * r.trans * Math.exp(-2 * a * R) * dT / (R * R);
     if (sig >= th && R >= 0.3) cands.push({ R, sig, src, o: r.hO });
@@ -1149,184 +1311,22 @@ function measure(rng, ox, oy, oz, az, el) {
   if (S.rain > 0) part(S.rain * 0.012, 15e-4, 3, 0, 1e9);
   if (S.fog > 0) part(S.fog * 0.03, 2e-3, 4, 0, 1e9);
   if (span) part(S.dustD * 0.5, 6e-3, 5, span[0] / r.cE, span[1] / r.cE);
-  if (S.interf && rng() < 4e-3) cands.push({ R: 1 + rng() * Math.min(S.rmax * 0.6, 40), sig: th * 3, src: 6, o: null });
+  if (S.interf && rng() < 4e-3) cands.push({ R: 1 + rng() * Math.min(L.rmax * 0.6, 40), sig: th * 3, src: 6, o: null });
   if (!cands.length) return null;
   let c = cands[0];
-  if (S.echo === "first") {
+  if (L.echo === "first") {
     for (const x of cands) if (x.R < c.R) c = x;
-  } else if (S.echo === "last") {
+  } else if (L.echo === "last") {
     for (const x of cands) if (x.R > c.R) c = x;
   } else {
     for (const x of cands) if (x.sig > c.sig) c = x;
   }
   return c;
 }
-var mountX = () => MOUNTS[S.mount].x;
-
-// src/sensors/lidar/pcview.js
-import * as THREE5 from "three";
-import { OrbitControls as OrbitControls2 } from "three/addons/controls/OrbitControls.js";
+var mountX = () => MOUNTS[L.mount].x;
 
 // src/sensors/lidar/pointcloud.js
 import * as THREE4 from "three";
-
-// src/sensors/lidar/scan.js
-var PB = null;
-var STAT = {};
-var sweepAz = -180;
-var revVx = 0;
-var revVy = 0;
-var revYaw = 0;
-function rcull() {
-  return Math.min(effRange(3) * 1.05 + 5, 2e3);
-}
-function ensureBuffer() {
-  const els = layerEls(), L = els.length, nAz = Math.max(1, Math.round(S.hfov / S.hres)), N = nAz * L, sig = nAz + "|" + L + "|" + S.hfov;
-  if (PB && PB.sig === sig) {
-    PB.els = els;
-    return;
-  }
-  PB = { sig, els, L, nAz, N, az0: S.hfov >= 360 ? -180 : -S.hfov / 2, step: S.hfov / nAz, Z: new Float32Array(N), SG: new Float32Array(N), LY: new Uint8Array(N), SRC: new Uint8Array(N), OID: new Int16Array(N).fill(-2), BL: new Uint8Array(N) };
-  resizePoints(N);
-}
-var RNG = mulberry32(12345);
-var colMs = 0.05;
-var colCount = 0;
-var sweepDone = 0;
-var effT = 0;
-var effHz = 0;
-function computeColumn(i, vx, vy, yaw, qx, qy, qyaw) {
-  colCount++;
-  const H = S.mountH, mx = mountX(), yawE = S.err.yaw * D2R, pitE = S.err.pitch * D2R, th = sTh(), L = PB.L, els = PB.els;
-  const azN = PB.az0 + (i + 0.5) * PB.step, azNr = azN * D2R, azR = azNr + yawE, dxR = Math.cos(azR), dyR = Math.sin(azR), cA = Math.cos(azNr), sA = Math.sin(azNr);
-  const cy = Math.cos(yaw), sy = Math.sin(yaw), ox = vx + mx * cy, oy = vy + mx * sy, cq = Math.cos(qyaw), sq = Math.sin(qyaw);
-  const pa = ptsGeo.attributes.position.array;
-  for (let j = 0; j < L; j++) {
-    const k = i * L + j, elR = els[j] + pitE * cA;
-    let ok = false;
-    PB.BL[k] = 0;
-    if (selfBlock(mx, 0, H, dxR, dyR, Math.tan(elR))) PB.BL[k] = 1;
-    else {
-      const m = measure(RNG, ox, oy, H, azR + yaw, elR);
-      if (m) {
-        const R = m.R + (S.noise > 0 ? gauss(RNG) * S.noise : 0);
-        if (R >= 0.3) {
-          const elN = els[j], hz = R * Math.cos(elN), z = H + S.err.h + R * Math.sin(elN);
-          const hx = mx + S.err.x + hz * cA, hy = hz * sA;
-          pa[k * 3] = qx + hx * cq - hy * sq;
-          pa[k * 3 + 1] = z;
-          pa[k * 3 + 2] = -(qy + hx * sq + hy * cq);
-          PB.Z[k] = z;
-          PB.SG[k] = Math.log10(Math.max(m.sig / th, 1));
-          PB.LY[k] = j;
-          PB.SRC[k] = m.src;
-          PB.OID[k] = m.o && m.o.idx !== void 0 ? m.o.idx : -1;
-          colorSlot(k);
-          ok = true;
-        }
-      }
-    }
-    if (!ok) {
-      pa[k * 3 + 1] = -1e5;
-      PB.OID[k] = -2;
-    }
-  }
-}
-function prepScan(margin) {
-  if (W.dynamic) buildPrims();
-  W.dustC = { cx: S.vx + W.dust.dx, cy: W.dust.dy, r: W.dust.r };
-  const mx = mountX();
-  buildBins(S.vx + mx * Math.cos(EGO.yaw), S.vy + mx * Math.sin(EGO.yaw), margin, rcull());
-}
-function fullScan(v) {
-  ensureBuffer();
-  RNG = mulberry32(S.live || F.driving ? Math.random() * 1e9 | 0 : 12345);
-  prepScan(v / S.freq * 1.5 + 1);
-  for (let i = 0; i < PB.nAz; i++) {
-    const azN = PB.az0 + (i + 0.5) * PB.step;
-    const t = S.type === "rot" ? fmod(azN + 180, 360) / 360 / S.freq : 0, sh = v * t;
-    computeColumn(i, S.vx + sh, S.vy, EGO.yaw, S.vx + (S.deskew ? sh : 0), S.vy, EGO.yaw);
-  }
-  sweepAz = -180;
-  revVx = S.vx;
-  revVy = S.vy;
-  revYaw = EGO.yaw;
-  markPts();
-}
-function sweepStep(dt) {
-  ensureBuffer();
-  RNG = mulberry32(Math.random() * 1e9 | 0);
-  prepScan(1);
-  const maxCols = Math.max(4, Math.floor(14 / Math.max(colMs, 1e-4)));
-  let adv = Math.min(360, 360 * S.freq * dt, maxCols * PB.step * 1.0001);
-  sweepDone += adv;
-  const tc0 = performance.now(), nc0 = colCount;
-  let a = sweepAz, b = a + adv;
-  const segs = b <= 180 ? [[a, b]] : [[a, 180], null, [-180, b - 360]];
-  for (const sg of segs) {
-    if (!sg) {
-      revVx = S.vx;
-      revVy = S.vy;
-      revYaw = EGO.yaw;
-      continue;
-    }
-    const i0 = Math.max(0, Math.floor((sg[0] - PB.az0) / PB.step - 0.5) + 1), i1 = Math.min(PB.nAz - 1, Math.floor((sg[1] - PB.az0) / PB.step - 0.5));
-    for (let i = i0; i <= i1; i++) {
-      if (S.deskew) computeColumn(i, S.vx, S.vy, EGO.yaw, S.vx, S.vy, EGO.yaw);
-      else computeColumn(i, S.vx, S.vy, EGO.yaw, revVx, revVy, revYaw);
-    }
-  }
-  sweepAz = b > 180 ? b - 360 : b;
-  markPts();
-  const nc = colCount - nc0;
-  if (nc > 0) colMs = 0.8 * colMs + 0.2 * (performance.now() - tc0) / nc;
-}
-function moveDynamicPoints(dt) {
-  if (!PB || !W.dynamic) return;
-  const vs = W.objs.map((o) => o.v || 0), pa = ptsGeo.attributes.position.array, O = PB.OID;
-  for (let k = 0; k < PB.N; k++) {
-    const id = O[k];
-    if (id >= 0) {
-      const v = vs[id];
-      if (v) pa[k * 3] += v * dt;
-    }
-  }
-  ptsGeo.attributes.position.needsUpdate = true;
-}
-function markPts() {
-  ptsGeo.attributes.position.needsUpdate = true;
-  ptsGeo.attributes.color.needsUpdate = true;
-  setPointSize(0.07 * S.psize * (S.layers <= 2 ? 1.6 : 1));
-}
-function updateRate(dt) {
-  effT += dt;
-  if (effT > 1) {
-    effHz = S.type === "rot" ? sweepDone / 360 / effT : S.freq;
-    sweepDone = 0;
-    effT = 0;
-  }
-}
-function computeStats() {
-  const cnt = /* @__PURE__ */ new Map();
-  for (const o of W.objs) cnt.set(o.name, 0);
-  let n = 0, blocked = 0;
-  for (let k = 0; k < PB.N; k++) {
-    if (PB.BL[k]) {
-      blocked++;
-      continue;
-    }
-    const id = PB.OID[k];
-    if (id === -2) continue;
-    n++;
-    if (id >= 0) {
-      const o = W.objs[id];
-      if (o) cnt.set(o.name, cnt.get(o.name) + 1);
-    }
-  }
-  STAT = { nAz: PB.nAz, L: PB.L, N: PB.N, n, blocked, cnt };
-}
-
-// src/sensors/lidar/pointcloud.js
 var ptsGeo = new THREE4.BufferGeometry();
 var ptsMat = new THREE4.PointsMaterial({ size: 0.07, vertexColors: true, sizeAttenuation: true });
 var ptsObj = new THREE4.Points(ptsGeo, ptsMat);
@@ -1358,14 +1358,14 @@ var SRC_C = SRCCOL.map((c) => new THREE4.Color(c));
 var G_C = new THREE4.Color("#8a949e");
 var O_C = new THREE4.Color("#ff9a1f");
 function colorSlot(k) {
-  const ca = ptsGeo.attributes.color.array, mode2 = S.color, L = PB.L;
+  const ca = ptsGeo.attributes.color.array, mode2 = L.color, nL = PB.L;
   let c;
   if (mode2 === "height") c = hcol(PB.Z[k], tmpC);
   else if (mode2 === "class") c = PB.Z[k] < 0.2 ? G_C : O_C;
   else if (mode2 === "intensity") {
     const v = Math.min(1, PB.SG[k] / 3);
     c = tmpC.setHSL(45 / 360, 0.95, 0.12 + 0.66 * v);
-  } else if (mode2 === "layer") c = tmpC.setHSL((L > 1 ? PB.LY[k] / (L - 1) * 300 : 180) / 360, 0.85, 0.55);
+  } else if (mode2 === "layer") c = tmpC.setHSL((nL > 1 ? PB.LY[k] / (nL - 1) * 300 : 180) / 360, 0.85, 0.55);
   else c = SRC_C[PB.SRC[k]];
   ca[k * 3] = c.r;
   ca[k * 3 + 1] = c.g;
@@ -1384,38 +1384,38 @@ hits.frustumCulled = false;
 scene.add(hits);
 var sweep = 0;
 function updateBeams(dt) {
-  beams.visible = hits.visible = S.beams;
-  if (!S.beams) return;
+  beams.visible = hits.visible = L.beams;
+  if (!L.beams) return;
   beamMat.color.set(css("--lidar"));
   hits.material.color.set(css("--lidar"));
   const pa = beamGeo.attributes.position.array, ha = hitGeo.attributes.position.array;
-  const els = layerEls(), H = S.mountH, mx = mountX(), yw = EGO.yaw, ox = S.vx + mx * Math.cos(yw), oy = S.vy + mx * Math.sin(yw), rng = mulberry32(99);
+  const els = layerEls(), H = L.mountH, mx = mountX(), yw = EGO.yaw, ox = S.vx + mx * Math.cos(yw), oy = S.vy + mx * Math.sin(yw), rng = mulberry32(99);
   let k = 0, h = 0;
   const rays = [];
-  if (S.type === "rot") {
+  if (L.type === "rot") {
     sweep += dt * 180;
-    let a = S.hfov >= 360 ? fmod(sweep, 360) - 180 : fmod(sweep, S.hfov) - S.hfov / 2;
+    let a = L.hfov >= 360 ? fmod(sweep, 360) - 180 : fmod(sweep, L.hfov) - L.hfov / 2;
     const stepE = Math.max(1, Math.floor(els.length / 48));
     for (let j = 0; j < els.length; j += stepE) rays.push([a, j]);
   } else {
-    const as = [-S.hfov / 2, -S.hfov / 4, 0, S.hfov / 4, S.hfov / 2];
+    const as = [-L.hfov / 2, -L.hfov / 4, 0, L.hfov / 4, L.hfov / 2];
     const js = els.length > 1 ? [0, Math.floor(els.length / 2), els.length - 1] : [0];
     for (const a of as) for (const j of js) rays.push([a, j]);
   }
   for (const [azN, j] of rays) {
-    const azR = (azN + S.err.yaw) * D2R, elR = els[j] + S.err.pitch * D2R * Math.cos(azN * D2R);
+    const azR = (azN + L.err.yaw) * D2R, elR = els[j] + L.err.pitch * D2R * Math.cos(azN * D2R);
     const dx = Math.cos(azR), dy = Math.sin(azR);
-    let L, hit = false;
-    if (selfBlock(mx, 0, H, dx, dy, Math.tan(elR))) L = 0.35;
+    let len, hit = false;
+    if (selfBlock(mx, 0, H, dx, dy, Math.tan(elR))) len = 0.35;
     else {
       const m = measure(rng, ox, oy, H, azR + yw, elR);
       if (m) {
-        L = m.R;
+        len = m.R;
         hit = true;
-      } else L = Math.min(S.rmax, 60);
+      } else len = Math.min(L.rmax, 60);
     }
     const ce = Math.cos(elR), wx = Math.cos(azR + yw), wy = Math.sin(azR + yw);
-    const ex = ox + L * ce * wx, ey = oy + L * ce * wy, ez = H + L * Math.sin(elR);
+    const ex = ox + len * ce * wx, ey = oy + len * ce * wy, ez = H + len * Math.sin(elR);
     pa[k++] = ox;
     pa[k++] = H;
     pa[k++] = -oy;
@@ -1434,43 +1434,290 @@ function updateBeams(dt) {
   hitGeo.attributes.position.needsUpdate = true;
 }
 
+// src/sensors/lidar/scan.js
+var PB = null;
+var STAT = {};
+var sweepAz = -180;
+var revVx = 0;
+var revVy = 0;
+var revYaw = 0;
+function rcull() {
+  return Math.min(effRange(3) * 1.05 + 5, 2e3);
+}
+function ensureBuffer() {
+  const els = layerEls(), nL = els.length, nAz = Math.max(1, Math.round(L.hfov / L.hres)), N = nAz * nL, sig = nAz + "|" + nL + "|" + L.hfov;
+  if (PB && PB.sig === sig) {
+    PB.els = els;
+    return;
+  }
+  PB = { sig, els, L: nL, nAz, N, az0: L.hfov >= 360 ? -180 : -L.hfov / 2, step: L.hfov / nAz, Z: new Float32Array(N), SG: new Float32Array(N), LY: new Uint8Array(N), SRC: new Uint8Array(N), OID: new Int16Array(N).fill(-2), BL: new Uint8Array(N) };
+  resizePoints(N);
+}
+var RNG = mulberry32(12345);
+var colMs = 0.05;
+var colCount = 0;
+var sweepDone = 0;
+var effT = 0;
+var effHz = 0;
+function computeColumn(i, vx, vy, yaw, qx, qy, qyaw) {
+  colCount++;
+  const H = L.mountH, mx = mountX(), yawE = L.err.yaw * D2R, pitE = L.err.pitch * D2R, th = sTh(), nL = PB.L, els = PB.els;
+  const azN = PB.az0 + (i + 0.5) * PB.step, azNr = azN * D2R, azR = azNr + yawE, dxR = Math.cos(azR), dyR = Math.sin(azR), cA = Math.cos(azNr), sA = Math.sin(azNr);
+  const cy = Math.cos(yaw), sy = Math.sin(yaw), ox = vx + mx * cy, oy = vy + mx * sy, cq = Math.cos(qyaw), sq = Math.sin(qyaw);
+  const pa = ptsGeo.attributes.position.array;
+  for (let j = 0; j < nL; j++) {
+    const k = i * nL + j, elR = els[j] + pitE * cA;
+    let ok = false;
+    PB.BL[k] = 0;
+    if (selfBlock(mx, 0, H, dxR, dyR, Math.tan(elR))) PB.BL[k] = 1;
+    else {
+      const m = measure(RNG, ox, oy, H, azR + yaw, elR);
+      if (m) {
+        const R = m.R + (L.noise > 0 ? gauss(RNG) * L.noise : 0);
+        if (R >= 0.3) {
+          const elN = els[j], hz = R * Math.cos(elN), z = H + L.err.h + R * Math.sin(elN);
+          const hx = mx + L.err.x + hz * cA, hy = hz * sA;
+          pa[k * 3] = qx + hx * cq - hy * sq;
+          pa[k * 3 + 1] = z;
+          pa[k * 3 + 2] = -(qy + hx * sq + hy * cq);
+          PB.Z[k] = z;
+          PB.SG[k] = Math.log10(Math.max(m.sig / th, 1));
+          PB.LY[k] = j;
+          PB.SRC[k] = m.src;
+          PB.OID[k] = m.o && m.o.idx !== void 0 ? m.o.idx : -1;
+          colorSlot(k);
+          ok = true;
+        }
+      }
+    }
+    if (!ok) {
+      pa[k * 3 + 1] = -1e5;
+      PB.OID[k] = -2;
+    }
+  }
+}
+function prepScan(margin) {
+  if (W.dynamic) buildPrims();
+  W.dustC = { cx: S.vx + W.dust.dx, cy: W.dust.dy, r: W.dust.r };
+  const mx = mountX();
+  buildBins(S.vx + mx * Math.cos(EGO.yaw), S.vy + mx * Math.sin(EGO.yaw), margin, rcull());
+}
+function fullScan(v) {
+  ensureBuffer();
+  RNG = mulberry32(L.live || F.driving ? Math.random() * 1e9 | 0 : 12345);
+  prepScan(v / L.freq * 1.5 + 1);
+  for (let i = 0; i < PB.nAz; i++) {
+    const azN = PB.az0 + (i + 0.5) * PB.step;
+    const t = L.type === "rot" ? fmod(azN + 180, 360) / 360 / L.freq : 0, sh = v * t;
+    computeColumn(i, S.vx + sh, S.vy, EGO.yaw, S.vx + (L.deskew ? sh : 0), S.vy, EGO.yaw);
+  }
+  sweepAz = -180;
+  revVx = S.vx;
+  revVy = S.vy;
+  revYaw = EGO.yaw;
+  markPts();
+}
+function sweepStep(dt) {
+  ensureBuffer();
+  RNG = mulberry32(Math.random() * 1e9 | 0);
+  prepScan(1);
+  const maxCols = Math.max(4, Math.floor(14 / Math.max(colMs, 1e-4)));
+  let adv = Math.min(360, 360 * L.freq * dt, maxCols * PB.step * 1.0001);
+  sweepDone += adv;
+  const tc0 = performance.now(), nc0 = colCount;
+  let a = sweepAz, b = a + adv;
+  const segs = b <= 180 ? [[a, b]] : [[a, 180], null, [-180, b - 360]];
+  for (const sg of segs) {
+    if (!sg) {
+      revVx = S.vx;
+      revVy = S.vy;
+      revYaw = EGO.yaw;
+      continue;
+    }
+    const i0 = Math.max(0, Math.floor((sg[0] - PB.az0) / PB.step - 0.5) + 1), i1 = Math.min(PB.nAz - 1, Math.floor((sg[1] - PB.az0) / PB.step - 0.5));
+    for (let i = i0; i <= i1; i++) {
+      if (L.deskew) computeColumn(i, S.vx, S.vy, EGO.yaw, S.vx, S.vy, EGO.yaw);
+      else computeColumn(i, S.vx, S.vy, EGO.yaw, revVx, revVy, revYaw);
+    }
+  }
+  sweepAz = b > 180 ? b - 360 : b;
+  markPts();
+  const nc = colCount - nc0;
+  if (nc > 0) colMs = 0.8 * colMs + 0.2 * (performance.now() - tc0) / nc;
+}
+function moveDynamicPoints(dt) {
+  if (!PB || !W.dynamic) return;
+  const vs = W.objs.map((o) => o.v || 0), pa = ptsGeo.attributes.position.array, O = PB.OID;
+  for (let k = 0; k < PB.N; k++) {
+    const id = O[k];
+    if (id >= 0) {
+      const v = vs[id];
+      if (v) pa[k * 3] += v * dt;
+    }
+  }
+  ptsGeo.attributes.position.needsUpdate = true;
+}
+function markPts() {
+  ptsGeo.attributes.position.needsUpdate = true;
+  ptsGeo.attributes.color.needsUpdate = true;
+  setPointSize(0.07 * L.psize * (L.layers <= 2 ? 1.6 : 1));
+}
+function updateRate(dt) {
+  effT += dt;
+  if (effT > 1) {
+    effHz = L.type === "rot" ? sweepDone / 360 / effT : L.freq;
+    sweepDone = 0;
+    effT = 0;
+  }
+}
+function computeStats() {
+  const cnt = /* @__PURE__ */ new Map();
+  for (const o of W.objs) cnt.set(o.name, 0);
+  let n = 0, blocked = 0;
+  for (let k = 0; k < PB.N; k++) {
+    if (PB.BL[k]) {
+      blocked++;
+      continue;
+    }
+    const id = PB.OID[k];
+    if (id === -2) continue;
+    n++;
+    if (id >= 0) {
+      const o = W.objs[id];
+      if (o) cnt.set(o.name, cnt.get(o.name) + 1);
+    }
+  }
+  STAT = { nAz: PB.nAz, L: PB.L, N: PB.N, n, blocked, cnt };
+}
+
+// src/sensors/lidar/mount3d.js
+import * as THREE5 from "three";
+var sensorGrp = new THREE5.Group();
+veh.add(sensorGrp);
+var mast = new THREE5.Mesh(new THREE5.CylinderGeometry(0.035, 0.045, 1, 10), rackMat);
+sensorGrp.add(mast);
+var puck = new THREE5.Group();
+{
+  const a = new THREE5.Mesh(new THREE5.CylinderGeometry(0.052, 0.052, 0.072, 28), new THREE5.MeshStandardMaterial({ color: 2896439, metalness: 0.6, roughness: 0.35 }));
+  const ring = new THREE5.Mesh(new THREE5.CylinderGeometry(0.053, 0.053, 0.03, 28), new THREE5.MeshStandardMaterial({ color: 724239, roughness: 0.1, metalness: 0.3 }));
+  puck.add(a, ring);
+}
+var ssBox = new THREE5.Mesh(new THREE5.BoxGeometry(0.09, 0.06, 0.13), new THREE5.MeshStandardMaterial({ color: 2238251, roughness: 0.3 }));
+sensorGrp.add(puck, ssBox);
+function updateSensorMesh() {
+  const mx = mountX(), H = L.mountH;
+  puck.visible = L.type === "rot";
+  ssBox.visible = !puck.visible;
+  for (const m of [puck, ssBox]) {
+    m.position.set(mx, H, 0);
+    m.rotation.set(0, L.err.yaw * D2R, 0);
+    m.rotateZ(-L.err.pitch * D2R);
+  }
+  const base = L.mount === "front" ? Math.min(H, 0.3) : carTop(mx);
+  const len = Math.max(5e-3, H - 0.04 - base);
+  mast.visible = len > 0.03;
+  mast.scale.set(1, len, 1);
+  mast.position.set(mx, base + len / 2, 0);
+}
+
+// src/sensors/lidar/metrics.js
+function legendHtml() {
+  const m = L.color;
+  if (m === "height") return '0 m<span class="barc" style="background:linear-gradient(90deg,hsl(240,85%,50%),hsl(120,85%,53%),hsl(0,85%,56%))"></span>3 m+';
+  if (m === "class") return '<span><i style="background:#8a949e"></i>grond (z &lt; 0,2 m)</span><span><i style="background:#ff9a1f"></i>obstakel</span>';
+  if (m === "intensity") return 'zwak<span class="barc" style="background:linear-gradient(90deg,hsl(45,95%,12%),hsl(45,95%,78%))"></span>sterk';
+  if (m === "layer") return 'onderste laag<span class="barc" style="background:linear-gradient(90deg,hsl(0,85%,55%),hsl(120,85%,55%),hsl(240,85%,55%),hsl(300,85%,55%))"></span>bovenste';
+  return SRCNAME.map((n, i) => '<span><i style="background:' + SRCCOL[i] + '"></i>' + n + "</span>").join("");
+}
+function metrics() {
+  const st = STAT, nL = st.L, rows = [], pps = st.N * L.freq;
+  rows.push(["Stralen per scan", st.N.toLocaleString("nl-BE")]);
+  rows.push(["Stralen per seconde", pps.toLocaleString("nl-BE")]);
+  rows.push(["Gemeten punten (laatste scan)", st.n.toLocaleString("nl-BE")]);
+  rows.push(["Geblokkeerd door eigen wagen", nl(100 * st.blocked / st.N, 1) + " %", st.blocked / st.N > 0.05 ? "w" : ""]);
+  rows.push(["Horizontale puntafstand op 10 m", nl(10 * L.hres * D2R * 100, 1) + " cm"]);
+  rows.push(["Horizontale puntafstand op 100 m", nl(100 * L.hres * D2R * 100, 0) + " cm"]);
+  if (nL > 1) {
+    const dv = L.vfov / (nL - 1), g = 20 * Math.tan(dv * D2R), g2 = 100 * Math.tan(dv * D2R);
+    rows.push(["Hoek tussen lagen", nl(dv, 2) + "\xB0"]);
+    rows.push(["Afstand tussen lagen op 20 m", nl(g, 2) + " m", g > 0.5 ? "w" : ""]);
+    rows.push(["Afstand tussen lagen op 100 m", nl(g2, 2) + " m", g2 > 0.5 ? "w" : ""]);
+  } else rows.push(["Lagen", "1 \u2014 enkel het vlak op " + nl(L.mountH, 2) + " m", "w"]);
+  const elMin = L.vcenter - (nL > 1 ? L.vfov / 2 : 0) + L.err.pitch;
+  rows.push(["Eerste grondpunt vooraan", elMin < 0 ? nl(L.mountH / Math.tan(-elMin * D2R), 1) + " m voor de sensor" : "grond nooit gezien", elMin < 0 ? "" : "r"]);
+  const rw = effRange(0.8), rb = effRange(0.05);
+  rows.push(["Bereik wit object (80 %)", nl(rw, 0) + " m"]);
+  rows.push(["Bereik zwart object (5 %)", nl(rb, 0) + " m", rb < L.rmax * 0.5 ? "w" : ""]);
+  const v = S.speed, stop = v * 1 + v * v / (2 * 7);
+  rows.push(["Stopafstand bij " + Math.round(v * 3.6) + " km/h (1 s + 7 m/s\xB2)", nl(stop, 0) + " m", stop > rb ? "w" : ""]);
+  if (L.type === "rot") rows.push(["Verplaatsing tijdens 1 scan", F.driving ? nl(S.speed / L.freq, 2) + " m" : "stilstand", F.driving && S.speed / L.freq > 0.3 && !L.deskew ? "w" : ""]);
+  if (L.err.yaw) rows.push(["Zijdelingse fout op 30 m (yaw)", nl(30 * Math.tan(Math.abs(L.err.yaw) * D2R), 2) + " m", "w"]);
+  if (L.err.pitch) rows.push(["Hoogtefout op 20 m (pitch)", nl(20 * Math.tan(Math.abs(L.err.pitch) * D2R), 2) + " m", "w"]);
+  $("metrics").innerHTML = "<table>" + rows.map((r) => '<tr><td class="lbl">' + r[0] + '</td><td><b class="' + (r[2] || "") + '">' + r[1] + "</b></td></tr>").join("") + "</table>";
+  let t = "<table>";
+  const done = /* @__PURE__ */ new Set();
+  for (const o of W.objs) {
+    if (!o.key || done.has(o.name)) continue;
+    done.add(o.name);
+    const n = st.cnt.get(o.name) || 0;
+    const cls = n === 0 ? "no" : n < 5 ? "lo" : "ok", lab = n === 0 ? "niet gezien" : n < 5 ? "zwak" : "gezien";
+    t += '<tr><td class="lbl">' + o.name + "</td><td>" + n + ' <span class="pill ' + cls + '">' + lab + "</span></td></tr>";
+  }
+  $("objtab").innerHTML = t + "</table>";
+  const cl = (n) => n === 0 ? "r" : n < 5 ? "w" : "g", sx = S.vx + mountX(), sy0 = S.vy;
+  const items = W.hud.map(([name, lab]) => {
+    const o = W.objs.find((q) => q.name === name);
+    const n = st.cnt.get(name) || 0;
+    const d = o && o.hx !== void 0 ? Math.hypot(o.hx + o.dx - sx, o.hy - sy0) : 0;
+    return lab + " (" + nl(d, 0) + ' m): <span class="' + cl(n) + '">' + n + "</span>";
+  });
+  const hud = (L.type === "rot" ? "roterend" : "solid-state") + " \xB7 " + L.layers + " lagen \xB7 " + L.hfov + "\xB0 \xB7 " + String(L.hres).replace(".", ",") + "\xB0 \xB7 " + L.freq + " Hz\n" + pps.toLocaleString("nl-BE") + " stralen/s \xB7 " + st.n.toLocaleString("nl-BE") + " punten" + (F.driving ? " \xB7 " + Math.round(S.speed * 3.6) + " km/h" : "") + (F.driving && L.type === "rot" && effHz > 0 && effHz < L.freq * 0.9 ? ' \xB7 <span class="w">pc haalt ' + nl(effHz, 0) + " van " + L.freq + " Hz</span>" : "") + "\n" + items.join(" \xB7 ");
+  $("hud").innerHTML = hud;
+  $("pcvHead").innerHTML = "<b>PUNTENWOLK</b>  /points \xB7 " + st.n.toLocaleString("nl-BE") + " punten \xB7 " + L.freq + " Hz\nringen 10 \xB7 20 \xB7 30 \xB7 50 \xB7 100 m";
+  const lg = legendHtml();
+  $("legend").innerHTML = lg;
+  $("pcvLeg").innerHTML = lg;
+}
+
 // src/sensors/lidar/pcview.js
+import * as THREE6 from "three";
+import { OrbitControls as OrbitControls2 } from "three/addons/controls/OrbitControls.js";
 var pcvStage = $("pcvStage");
-var pcvR = new THREE5.WebGLRenderer({ antialias: true });
+var pcvR = new THREE6.WebGLRenderer({ antialias: true });
 pcvR.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 pcvStage.prepend(pcvR.domElement);
-var pcvScene = new THREE5.Scene();
-pcvScene.background = new THREE5.Color(329738);
-var pcvCam = new THREE5.PerspectiveCamera(55, 1, 0.05, 1200);
+var pcvScene = new THREE6.Scene();
+pcvScene.background = new THREE6.Color(329738);
+var pcvCam = new THREE6.PerspectiveCamera(55, 1, 0.05, 1200);
 var pcvCtl = new OrbitControls2(pcvCam, pcvR.domElement);
 pcvCtl.enableDamping = true;
-var pcvMat = new THREE5.PointsMaterial({ size: 0.08, vertexColors: true, sizeAttenuation: true });
-var pcvPts = new THREE5.Points(ptsGeo, pcvMat);
+var pcvMat = new THREE6.PointsMaterial({ size: 0.08, vertexColors: true, sizeAttenuation: true });
+var pcvPts = new THREE6.Points(ptsGeo, pcvMat);
 pcvPts.frustumCulled = false;
 pointUsers.push(pcvPts);
 pointMats.push([pcvMat, 1.15]);
-var pcvWorld = new THREE5.Group();
+var pcvWorld = new THREE6.Group();
 pcvWorld.add(pcvPts);
 pcvScene.add(pcvWorld);
-var YAX = new THREE5.Vector3(0, 1, 0);
-var pcvEgo = new THREE5.Group();
+var YAX = new THREE6.Vector3(0, 1, 0);
+var pcvEgo = new THREE6.Group();
 pcvScene.add(pcvEgo);
 {
-  const eg = new THREE5.Mesh(new THREE5.BoxGeometry(CARL, 1.4, 1.84), new THREE5.MeshBasicMaterial({ color: 3983274, transparent: true, opacity: 0.18 }));
+  const eg = new THREE6.Mesh(new THREE6.BoxGeometry(CARL, 1.4, 1.84), new THREE6.MeshBasicMaterial({ color: 3983274, transparent: true, opacity: 0.18 }));
   eg.position.set(CARC, 0.7, 0);
-  const ed = new THREE5.LineSegments(new THREE5.EdgesGeometry(eg.geometry), new THREE5.LineBasicMaterial({ color: 3983274 }));
+  const ed = new THREE6.LineSegments(new THREE6.EdgesGeometry(eg.geometry), new THREE6.LineBasicMaterial({ color: 3983274 }));
   ed.position.copy(eg.position);
   pcvEgo.add(eg, ed);
   for (const r of [10, 20, 30, 50, 100]) {
-    const c = new THREE5.EllipseCurve(0, 0, r, r, 0, 2 * Math.PI).getPoints(128);
-    const g = new THREE5.BufferGeometry().setFromPoints(c.map((p) => new THREE5.Vector3(p.x, 0.01, p.y)));
-    const l = new THREE5.LineLoop(g, new THREE5.LineBasicMaterial({ color: 1915460 }));
+    const c = new THREE6.EllipseCurve(0, 0, r, r, 0, 2 * Math.PI).getPoints(128);
+    const g = new THREE6.BufferGeometry().setFromPoints(c.map((p) => new THREE6.Vector3(p.x, 0.01, p.y)));
+    const l = new THREE6.LineLoop(g, new THREE6.LineBasicMaterial({ color: 1915460 }));
     pcvEgo.add(l);
   }
-  const ax = new THREE5.LineSegments(new THREE5.BufferGeometry().setFromPoints([new THREE5.Vector3(0, 0.01, 0), new THREE5.Vector3(3, 0.01, 0), new THREE5.Vector3(0, 0.01, 0), new THREE5.Vector3(0, 0.01, -3)]), new THREE5.LineBasicMaterial({ color: 10466237 }));
+  const ax = new THREE6.LineSegments(new THREE6.BufferGeometry().setFromPoints([new THREE6.Vector3(0, 0.01, 0), new THREE6.Vector3(3, 0.01, 0), new THREE6.Vector3(0, 0.01, 0), new THREE6.Vector3(0, 0.01, -3)]), new THREE6.LineBasicMaterial({ color: 10466237 }));
   pcvEgo.add(ax);
 }
-var pcvSensor = new THREE5.Mesh(new THREE5.SphereGeometry(0.06, 12, 8), new THREE5.MeshBasicMaterial({ color: 16755517 }));
+var pcvSensor = new THREE6.Mesh(new THREE6.SphereGeometry(0.06, 12, 8), new THREE6.MeshBasicMaterial({ color: 16755517 }));
 pcvEgo.add(pcvSensor);
 var pcvView = "3d";
 function setPcvView(v) {
@@ -1497,6 +1744,119 @@ $("pcvFs").addEventListener("click", () => {
     toast("Volledig scherm is hier niet toegelaten");
   }
 });
+
+// src/sensors/lidar/index.js
+var scanAcc = 0;
+var liveAcc = 0;
+var lastMetrics = 0;
+function fixMount() {
+  const min = L.mount === "front" ? 0.1 : carTop(mountX()) + 0.08;
+  if (L.mountH < min) {
+    L.mountH = +min.toFixed(2);
+    toast("Op deze plaats: montagehoogte minstens " + nl(L.mountH, 2) + " m");
+  }
+}
+var lidar_default = {
+  id: "lidar",
+  label: "Lidar",
+  state: L,
+  // eigen toestand; UI-sleutels "lidar.<key>"
+  params: controls_default,
+  // UI-schema (tabblad Sensor)
+  presets: PRESETS,
+  experiments: experiments_default,
+  views: [{ stage: pcvStage, renderer: pcvR, camera: pcvCam }],
+  // UI: na wijziging van een eigen sleutel (zonder prefix)
+  onChange(k) {
+    if (k === "preset" && L.preset !== "custom") Object.assign(L, PRESETS[L.preset]);
+    else if (SENSORKEYS.includes(k)) {
+      L.preset = "custom";
+      if (k === "type" && L.type === "static" && L.hfov > 180) L.hfov = 120;
+    }
+    if (["mount", "mountH", "preset"].includes(k)) fixMount();
+  },
+  disabled(k) {
+    return k === "vfov" && L.layers === 1 || k === "deskew" && L.type !== "rot";
+  },
+  // experiment: standaard VLP-16; weergavekeuzes (kleur, puntgrootte, live) blijven behouden tenzij opgegeven
+  reset(o) {
+    const ns = JSON.parse(JSON.stringify(LBASE));
+    Object.assign(ns, { color: L.color, psize: L.psize, live: L.live });
+    const pr = o.preset || "vlp16";
+    Object.assign(ns, PRESETS[pr]);
+    ns.preset = pr;
+    for (const k in o) {
+      if (k === "err") Object.assign(ns.err, o.err);
+      else ns[k] = o[k];
+    }
+    for (const k in ns) L[k] = k === "err" ? Object.assign({}, ns.err) : ns[k];
+  },
+  eye() {
+    return { x: mountX(), h: L.mountH };
+  },
+  // camerastandpunt "Vanuit sensor"
+  init() {
+    setPcvView("3d");
+  },
+  resetView() {
+    setPcvView(pcvView);
+  },
+  // 3D-model op de wagen en het voertuigframe van het puntenwolkvenster bijwerken
+  update3d() {
+    pcvEgo.position.set(0, 0, 0);
+    pcvWorld.rotation.y = -EGO.yaw;
+    pcvWorld.position.set(-S.vx, 0, S.vy).applyAxisAngle(YAX, -EGO.yaw);
+    pcvSensor.position.set(mountX(), L.mountH, 0);
+    updateSensorMesh();
+  },
+  // meten: force = instelling of wereld gewijzigd → volledige scan
+  step(dt, now, force) {
+    scanAcc += dt;
+    liveAcc += dt;
+    if (force) {
+      fullScan(F.driving ? S.speed : 0);
+      scanAcc = 0;
+      liveAcc = 0;
+    } else if (F.driving) {
+      moveDynamicPoints(dt);
+      if (L.type === "rot") sweepStep(dt);
+      else if (scanAcc >= 1 / L.freq) {
+        fullScan(0);
+        scanAcc = 0;
+      }
+      updateRate(dt);
+    } else if (L.live && liveAcc > 0.3) {
+      fullScan(0);
+      liveAcc = 0;
+    }
+    if (force || (F.driving || L.live) && now - lastMetrics > 250) {
+      computeStats();
+      metrics();
+      lastMetrics = now;
+    }
+  },
+  animate(dt) {
+    if (pcvView === "drv") {
+      pcvCam.position.set(-0.6, 1.25, 0);
+      pcvCam.lookAt(30, 0.6, 0);
+    } else pcvCtl.update();
+    updateBeams(dt);
+  },
+  render(layout) {
+    if (layout !== "world") pcvR.render(pcvScene, pcvCam);
+  },
+  stats: () => STAT,
+  bench() {
+    const t = performance.now();
+    fullScan(0);
+    computeStats();
+    return performance.now() - t;
+  }
+};
+
+// src/core/sensors.js
+var SENSORS = [lidar_default];
+var SMAP = Object.fromEntries(SENSORS.map((s) => [s.id, s]));
 
 // src/core/camera.js
 var view = "free";
@@ -1533,78 +1893,32 @@ function camSyncX() {
 function followCams() {
   const d = S.vx - lastVx, dz = -(S.vy - lastVy);
   if (view === "sensor") {
-    const mx = mountX() + 0.12, c = Math.cos(EGO.yaw), s2 = Math.sin(EGO.yaw);
-    camera.position.set(S.vx + mx * c, S.mountH + 0.05, -(S.vy + mx * s2));
-    camera.lookAt(S.vx + mx * c + 20 * c, S.mountH - 1, -(S.vy + mx * s2 + 20 * s2));
+    const e = SENSORS[0].eye(), mx = e.x + 0.12, c = Math.cos(EGO.yaw), s2 = Math.sin(EGO.yaw);
+    camera.position.set(S.vx + mx * c, e.h + 0.05, -(S.vy + mx * s2));
+    camera.lookAt(S.vx + mx * c + 20 * c, e.h - 1, -(S.vy + mx * s2 + 20 * s2));
   } else if (d !== 0 || dz !== 0) {
     camera.position.x += d;
     controls.target.x += d;
     camera.position.z += dz;
     controls.target.z += dz;
   }
-  if (pcvView === "drv") {
-    pcvCam.position.set(-0.6, 1.25, 0);
-    pcvCam.lookAt(30, 0.6, 0);
-  }
 }
 
 // src/core/layout.js
 function resize() {
-  for (const [r, st, c] of [[renderer, stage, camera], [pcvR, pcvStage, pcvCam]]) {
-    const b = st.getBoundingClientRect();
+  const list = [{ stage, renderer, camera }, ...SENSORS.flatMap((s) => s.views || [])];
+  for (const v of list) {
+    const b = v.stage.getBoundingClientRect();
     if (b.width < 2) continue;
-    r.setSize(b.width, b.height, false);
-    c.aspect = b.width / Math.max(1, b.height);
-    c.updateProjectionMatrix();
+    v.renderer.setSize(b.width, b.height, false);
+    v.camera.aspect = b.width / Math.max(1, b.height);
+    v.camera.updateProjectionMatrix();
   }
 }
 
 // src/core/ui.js
-import * as THREE6 from "three";
-
-// src/sensors/lidar/presets.js
-var PRESETS = {
-  vlp16: { type: "rot", hfov: 360, hres: 0.2, layers: 16, vfov: 30, vcenter: 0, rmax: 100, freq: 10, mount: "roofM", mountH: 1.85 },
-  os64: { type: "rot", hfov: 360, hres: 0.35, layers: 64, vfov: 45, vcenter: 0, rmax: 80, freq: 10, mount: "roofM", mountH: 1.85 },
-  hr128: { type: "rot", hfov: 360, hres: 0.2, layers: 128, vfov: 40, vcenter: -10, rmax: 200, freq: 10, mount: "roofM", mountH: 1.85 },
-  solid: { type: "static", hfov: 120, hres: 0.2, layers: 64, vfov: 25, vcenter: -3, rmax: 200, freq: 10, mount: "front", mountH: 0.6 },
-  safety: { type: "rot", hfov: 270, hres: 0.5, layers: 1, vfov: 2, vcenter: 0, rmax: 30, freq: 25, mount: "front", mountH: 0.25 },
-  lds: { type: "rot", hfov: 360, hres: 1, layers: 1, vfov: 2, vcenter: 0, rmax: 8, freq: 5, mount: "front", mountH: 0.3 }
-};
-var SENSORKEYS = ["type", "hfov", "hres", "layers", "vfov", "vcenter", "rmax", "freq", "mount", "mountH"];
-
-// src/sensors/lidar/controls.js
-var controls_default = [
-  { g: "Sensor", items: [
-    { k: "preset", t: "sel", label: "Voorbeeld", opts: [["vlp16", "Roterend, 16 lagen"], ["os64", "Roterend, 64 lagen"], ["hr128", "Roterend, 128 lagen, lang bereik"], ["solid", "Solid-state in grille, 120\xB0"], ["safety", "2D-veiligheidsscanner (270\xB0)"], ["lds", "Goedkope 2D (TurtleBot-klasse)"], ["custom", "\u2014 eigen instelling \u2014"]] },
-    { k: "type", t: "sel", label: "Bouwwijze", opts: [["rot", "Roterend"], ["static", "Statisch / solid-state"]] },
-    { k: "hfov", label: "Horizontale FOV", min: 20, max: 360, step: 10, u: "\xB0", d: 0 },
-    { k: "hres", t: "sel", label: "Hor. resolutie", num: true, opts: [[0.1, "0,1\xB0"], [0.2, "0,2\xB0"], [0.35, "0,35\xB0"], [0.5, "0,5\xB0"], [1, "1\xB0"], [1.6, "1,6\xB0"], [3.2, "3,2\xB0"]] },
-    { k: "layers", t: "sel", label: "Aantal lagen", num: true, opts: [1, 2, 4, 8, 16, 32, 64, 128].map((v) => [v, String(v)]) },
-    { k: "vfov", label: "Verticale FOV", min: 2, max: 90, step: 1, u: "\xB0", d: 0 },
-    { k: "vcenter", label: "Middenhoek verticaal", min: -30, max: 15, step: 1, u: "\xB0", d: 0 },
-    { k: "rmax", label: "Bereik @10 % reflectie", min: 5, max: 300, step: 5, u: " m", d: 0 },
-    { k: "freq", label: "Scanfrequentie", min: 2, max: 30, step: 1, u: " Hz", d: 0 }
-  ] },
-  { g: "Montage", items: [
-    { k: "mount", t: "sel", label: "Plaats", opts: Object.entries(MOUNTS).map(([k, m]) => [k, m.label]) },
-    { k: "mountH", label: "Montagehoogte", min: 0.1, max: 3.5, step: 0.05, u: " m", d: 2 }
-  ] },
-  { g: "Kalibratiefout", note: "Verschil tussen de werkelijke montage en wat de software denkt. De sensor in 3D staat echt scheef, de punten worden berekend alsof hij recht staat.", items: [
-    { k: "err.yaw", label: "Gierhoek (yaw)", min: -10, max: 10, step: 0.5, u: "\xB0", d: 1 },
-    { k: "err.pitch", label: "Kanteling (pitch)", min: -5, max: 5, step: 0.25, u: "\xB0", d: 2 },
-    { k: "err.h", label: "Hoogte", min: -0.5, max: 0.5, step: 0.05, u: " m", d: 2 },
-    { k: "err.x", label: "Positie voor/achter", min: -1, max: 1, step: 0.05, u: " m", d: 2 }
-  ] },
-  { g: "Verwerking", items: [
-    { k: "echo", t: "sel", label: "Echo-keuze", opts: [["first", "Eerste echo"], ["last", "Laatste echo"], ["strong", "Sterkste echo"]] },
-    { k: "noise", label: "Afstandsruis (1\u03C3)", min: 0, max: 0.15, step: 5e-3, u: " m", d: 3 },
-    { k: "deskew", t: "chk", label: "Bewegingscompensatie (deskew)" }
-  ] }
-];
-
-// src/core/ui.js
-var CTRL = { sensor: controls_default, env: [] };
+import * as THREE7 from "three";
+var CTRL = { sensor: [], env: [] };
 CTRL.env = [
   { g: "Wereld", items: [
     { k: "world", t: "sel", label: "Omgeving", opts: [["street", "Straat"], ["highway", "Snelweg"], ["farm", "Erf en akker"]] },
@@ -1619,29 +1933,33 @@ CTRL.env = [
     { k: "interf", t: "chk", label: "Storing door andere lidar" }
   ] },
   { g: "Weergave", items: [
-    { k: "color", t: "sel", label: "Kleur punten", opts: [["height", "Hoogte (berekend)"], ["class", "Grond / obstakel"], ["intensity", "Intensiteit"], ["layer", "Laag"], ["source", "Werkelijke oorzaak"]] },
-    { k: "objects", t: "sel", label: "Objecten", opts: [["full", "Volledig"], ["ghost", "Doorschijnend"], ["hidden", "Verborgen (enkel punten)"]] },
-    { k: "psize", label: "Puntgrootte", min: 0.5, max: 3, step: 0.25, fmt: (v) => nl(v, 2) + "\xD7" },
-    { k: "beams", t: "chk", label: "Stralen tonen (sweep vertraagd)" },
-    { k: "live", t: "chk", label: "Ruis en weer per scan vernieuwen" }
+    { k: "objects", t: "sel", label: "Objecten", opts: [["full", "Volledig"], ["ghost", "Doorschijnend"], ["hidden", "Verborgen (enkel punten)"]] }
   ] }
 ];
-var getK = (k) => k.split(".").reduce((o, p) => o[p], S);
+function root(k) {
+  const p = k.split("."), s = SMAP[p[0]];
+  return s ? [s.state, p.slice(1)] : [S, p];
+}
+var getK = (k) => {
+  const [o, p] = root(k);
+  return p.reduce((a, q) => a[q], o);
+};
 function setK(k, v) {
-  const p = k.split(".");
-  let o = S;
+  let [o, p] = root(k);
   for (let i = 0; i < p.length - 1; i++) o = o[p[i]];
   o[p[p.length - 1]] = v;
 }
 var ctrlEls = {};
 function fmtV(it, v) {
   if (it.fmt) return it.fmt(v);
-  return (v > 0 && it.k.startsWith("err.") ? "+" : "") + nl(v, it.d ?? 2) + (it.u || "");
+  return (v > 0 && (it.sk || it.k).startsWith("err.") ? "+" : "") + nl(v, it.d ?? 2) + (it.u || "");
 }
 function buildControls() {
+  CTRL.sensor = [];
+  for (const s of SENSORS) for (const G of s.params) CTRL.sensor.push({ ...G, g: (SENSORS.length > 1 ? s.label + " \xB7 " : "") + G.g, items: G.items.map((it) => ({ ...it, k: s.id + "." + it.k, sk: it.k })) });
   for (const tab of ["sensor", "env"]) {
-    const root = $("pane-" + tab);
-    root.innerHTML = "";
+    const pane = $("pane-" + tab);
+    pane.innerHTML = "";
     for (const G of CTRL[tab]) {
       const sec = document.createElement("section");
       sec.innerHTML = "<h2>" + G.g + "</h2>" + (G.note ? '<p class="hint">' + G.note + "</p>" : "");
@@ -1681,7 +1999,7 @@ function buildControls() {
         }
         sec.appendChild(el);
       }
-      root.appendChild(sec);
+      pane.appendChild(sec);
     }
   }
 }
@@ -1693,24 +2011,14 @@ function syncControls() {
       c.inp.value = v;
       if (c.out) c.out.textContent = fmtV(c.it, v);
     }
-    const dis = k === "vfov" && S.layers === 1 || k === "dustD" && !S.dust || k === "deskew" && S.type !== "rot";
+    const p = k.split("."), s = SMAP[p[0]], dis = s ? !!(s.disabled && s.disabled(p.slice(1).join("."))) : k === "dustD" && !S.dust;
     c.inp.disabled = dis;
     c.el.classList.toggle("dis", dis);
   }
 }
-function fixMount() {
-  const min = S.mount === "front" ? 0.1 : carTop(mountX()) + 0.08;
-  if (S.mountH < min) {
-    S.mountH = +min.toFixed(2);
-    toast("Op deze plaats: montagehoogte minstens " + nl(S.mountH, 2) + " m");
-  }
-}
 function onChange(k) {
-  if (k === "preset" && S.preset !== "custom") Object.assign(S, PRESETS[S.preset]);
-  else if (SENSORKEYS.includes(k)) {
-    S.preset = "custom";
-    if (k === "type" && S.type === "static" && S.hfov > 180) S.hfov = 120;
-  }
+  const p = k.split("."), s = SMAP[p[0]];
+  if (s && s.onChange) s.onChange(p.slice(1).join("."));
   if (k === "world") {
     const w = WORLDSTART[S.world];
     S.ped = { ...w.ped };
@@ -1725,7 +2033,6 @@ function onChange(k) {
     F.worldDirty = true;
     resetCams();
   }
-  if (["mount", "mountH", "preset"].includes(k)) fixMount();
   if (k === "objects") applyObjMode();
   if (k === "fog") updateFog();
   if (k === "wet") themeColors();
@@ -1762,7 +2069,7 @@ function setDriving(on) {
 $("driveBtn").addEventListener("click", () => setDriving(!F.driving));
 function resetCams() {
   setView(view === "sensor" ? "free" : view);
-  setPcvView(pcvView);
+  for (const s of SENSORS) if (s.resetView) s.resetView();
 }
 function changeLane(dir) {
   const ls = W.lanes || [0];
@@ -1797,8 +2104,8 @@ $("resetBtn").addEventListener("click", () => {
   F.dirty = true;
   resetCams();
 });
-var ray = new THREE6.Raycaster();
-var ndc = new THREE6.Vector2();
+var ray = new THREE7.Raycaster();
+var ndc = new THREE7.Vector2();
 var downXY = null;
 renderer.domElement.addEventListener("pointerdown", (e) => {
   downXY = [e.clientX, e.clientY];
@@ -1822,133 +2129,19 @@ renderer.domElement.addEventListener("pointerup", (e) => {
   markExp(null);
 });
 
-// src/sensors/lidar/experiments.js
-var EXPS = [
-  {
-    t: "E\xE9n laag: wat mist de sensor?",
-    set: { preset: "safety", color: "source", view: "chase" },
-    u: "Een 2D-scanner meet in \xE9\xE9n horizontaal vlak, op de montagehoogte (hier 0,25 m in de voorbumper). Alles boven of onder dat vlak bestaat niet voor de sensor.",
-    q: "Open het tabblad <b>Meting</b>: welke objecten krijgen 0 punten? Zet daarna de <b>montagehoogte</b> op 1,00 m. Wat wordt nu w\xE9l gezien, en wat verdwijnt?",
-    a: "Op 0,25 m: slagboom, vrachtwagen-laadbak, verkeersbord en stoeprand (15 cm) worden niet gezien, en van de witte auto enkel de wielen. De vrachtwagen lijkt pas te beginnen bij de wielen, terwijl de laadbak veel eerder komt: botsing. Op 1,00 m zie je laadbak en slagboom, maar hond (0,5 m) en stoeprand verdwijnen."
-  },
-  {
-    t: "Meer lagen, meer zicht op afstand",
-    set: { preset: "vlp16", ped: { x: 22, y: 1.2 }, color: "layer", objects: "ghost" },
-    u: 'Tussen twee lagen zit een vaste hoek. De verticale opening groeit met de afstand: <span class="f">\u0394z \u2248 d\xB7tan(\u0394hoek)</span>. Bij 16 lagen over 30\xB0 is dat 2\xB0 per laag.',
-    q: "Hoeveel punten krijgt de voetganger (zie HUD)? Verplaats hem met <b>Persoon plaatsen</b> naar ~40 m. Kies daarna <b>64 lagen</b> en vergelijk.",
-    a: "Met 16 lagen zitten de lagen op 20 m ongeveer 0,7 m uit elkaar: slechts 2\u20133 lagen raken de voetganger, op 40 m soms maar 1. Met 64 lagen worden het er 4\xD7 zoveel. De slagboom (10 cm hoog) valt zelfs tussen de lagen door."
-  },
-  {
-    t: "Horizontale resolutie en dunne palen",
-    set: { preset: "vlp16", color: "source", view: "top" },
-    u: 'Horizontaal staan de stralen <span class="f">d\xB7\u0394\u03B8</span> uit elkaar. Een paal van 12 cm valt tussen twee stralen als die opening groter is dan de paal.',
-    q: "Bekijk de rij palen bij 0,2\xB0. Zet de <b>horizontale resolutie</b> op 1,6\xB0 en daarna 3,2\xB0. Vanaf welke afstand mis je palen?",
-    a: "Bij 1,6\xB0 is de opening op 10 m al 28 cm: een paal van 12 cm wordt vanaf ~4\u20135 m niet meer elke scan geraakt. Bij 3,2\xB0 verdwijnen de meeste palen."
-  },
-  {
-    t: "Zwart en wit: reflectie bepaalt het bereik",
-    set: { preset: "vlp16", rmax: 30, color: "intensity" },
-    u: 'Het teruggekaatste signaal is ongeveer <span class="f">\u03C1 / R\xB2</span>. Een datasheetbereik geldt bij 10 % reflectie. Een zwarte auto (5 %) kaatst veel minder terug dan een witte (70 %).',
-    q: 'Het bereik staat op 30 m @10 %. Vergelijk de punten op de <b>witte</b> en de <b>zwarte auto</b>. Verhoog het bereik tot de zwarte auto "gezien" is.',
-    a: "Effectief bereik voor 5 % \u2248 \u221A(0,05/0,1) \xD7 30 = 21 m: de zwarte auto op ~25 m valt weg, de witte niet. Vanaf ongeveer 40 m bereik verschijnt de zwarte auto. Het retroreflecterende verkeersbord geeft juist een extreem sterk signaal."
-  },
-  {
-    t: "Glas: de lidar kijkt erdoor",
-    set: { preset: "vlp16", color: "source", objects: "ghost" },
-    u: "Laserlicht gaat grotendeels door glas. Slechts een klein deel van de stralen kaatst terug op de glaswand.",
-    q: "Bekijk het bushokje. Hoeveel punten krijgen de <b>glaswand</b> en de <b>persoon achter glas</b>? Wat betekent dit voor een voertuig dat een glazen gevel of etalage nadert?",
-    a: "De glaswand krijgt weinig, onregelmatige punten; de persoon erachter wordt wel gezien. Glas bestaat nauwelijks in de puntenwolk. Radar en camera vullen dat aan (sensorfusie)."
-  },
-  {
-    t: "Kantelfout (pitch): fantoomobstakels",
-    set: { preset: "vlp16", color: "class", err: { pitch: 1 }, view: "top" },
-    u: "De sensor staat in werkelijkheid 1\xB0 gekanteld (kijk naar de sensor op het dak), maar de software denkt dat hij recht staat. Punten boven 0,2 m worden als obstakel geclassificeerd.",
-    q: 'Waar verschijnen oranje "obstakels" op de grond? Zet de kanteling op \u22121\xB0. Wat verandert er?',
-    a: 'Bij +1\xB0 kijkt de sensor achteraan naar beneden: grond achter de wagen wordt te hoog berekend en wordt "obstakel" \u2192 fantoomremming bij achteruitrijden. Bij \u22121\xB0 wordt de grond v\xF3\xF3r de wagen een obstakel \u2192 noodremming zonder reden. 1\xB0 op 20 m = 35 cm hoogtefout.'
-  },
-  {
-    t: "Gierhoekfout (yaw): fout groeit met afstand",
-    set: { preset: "vlp16", err: { yaw: 3 }, objects: "ghost", view: "top" },
-    u: 'De sensor is 3\xB0 gedraaid gemonteerd. Een hoekfout geeft een zijdelingse fout van <span class="f">d\xB7tan(3\xB0) \u2248 5 cm per meter</span>.',
-    q: "Vergelijk de puntenwolk met de doorschijnende objecten. Hoe groot is de verschuiving bij de witte auto (~16 m) en bij de vrachtwagen (~38 m)? Wat betekent dat op de snelweg op 100 m?",
-    a: "Ongeveer 0,8 m bij de auto en 2 m bij de vrachtwagen. Op 100 m is dat 5 m: een auto in de rijstrook naast je lijkt in jouw rijstrook te staan. Daarom kalibreer je op verre objecten of met een kalibratiedoel op gekende positie."
-  },
-  {
-    t: "Verloren band op de snelweg",
-    set: { preset: "vlp16", world: "highway", color: "source", view: "chase" },
-    u: 'Bij 108 km/h (30 m/s) is de stopafstand ongeveer <span class="f">30\xB71 + 30\xB2/(2\xB77) \u2248 94 m</span>. Een band van 25 cm hoog ligt 128 m voor de wagen in jouw rijstrook (zie HUD).',
-    q: "Krijgt de band punten? Klik op <b>Rijden</b> en kijk in het puntenwolkvenster op welke afstand de band verschijnt. Probeer daarna <b>Roterend, 128 lagen</b> en <b>Solid-state in grille</b>. Welke sensor ziet hem op tijd?",
-    a: "Met 16 lagen liggen de lagen op 100 m 3,5 m uit elkaar en raakt geen enkele laag de band: hij verschijnt pas rond 30 m, ver binnen de stopafstand. De 128-lagensensor (naar beneden gericht, lang bereik) geeft de eerste punten rond 100 m, de solid-state rond 70 m. Maar 2\u20133 punten zijn nog geen herkenbaar object: dat vraagt opvolging over meerdere scans. Lage, donkere objecten op afstand zijn de moeilijkste opgave voor snelwegpiloten."
-  },
-  {
-    t: "Rijstrookmarkering met intensiteit",
-    set: { preset: "os64", world: "highway", color: "intensity", view: "top", objects: "ghost" },
-    u: "Wegmarkering bevat glasparels en kaatst veel meer licht terug dan asfalt. In de intensiteit van de lidar zie je de markering dus, ook zonder camera.",
-    q: "Herken je de rijstroken in het puntenwolkvenster? Tot welke afstand? Zet daarna <b>Nat wegdek</b> aan. Wat gebeurt er met asfalt en markering?",
-    a: "De markering licht op tot ~30\u201340 m, verder komen er te weinig grondpunten (scherende hoek). Op een nat wegdek verdwijnt het asfalt bijna volledig en wordt de markering zwakker: lijnherkenning wordt onbetrouwbaar."
-  },
-  {
-    t: "Brug en portiek: obstakel of niet?",
-    set: { preset: "os64", world: "highway", color: "class", view: "chase", drive: true },
-    u: "Een eenvoudig algoritme noemt alles boven 0,2 m een obstakel. Op de snelweg passeer je een portiek met borden (5,3 m) en een brug (5,4 m).",
-    q: "Wat zie je in het puntenwolkvenster als je de portiek en de brug nadert? Hoe kun je met de hoogte van de punten vermijden dat de wagen remt? Welk gevaar heeft zo'n filter?",
-    a: 'Portiek, borden en brug verschijnen oranje als "obstakel" midden boven de weg. Filter op een hoogtevenster (bv. 0,2\u20132,5 m boven de weg). Gevaar: een te laag venster mist een hoge laadbak of een te lage brug; bij een kantelfout van 1\xB0 schuift het venster op 100 m al 1,7 m.'
-  },
-  {
-    t: "Rijden met een roterende lidar",
-    set: { preset: "vlp16", world: "highway", speed: 33, freq: 10, color: "height", drive: true, view: "top", objects: "ghost", deskew: false },
-    u: 'Een roterende lidar doet ~0,1 s over \xE9\xE9n omwenteling. Tijdens die tijd rijdt de wagen <span class="f">v / f</span> verder: bij 120 km/h is dat 3,3 m. De scan begint en eindigt achteraan.',
-    q: "De bewegingscompensatie staat uit. Kijk naar de vangrail en de middenberm in het puntenwolkvenster (Boven). Zie je de knik achteraan? Zet de frequentie op 20 Hz en daarna <b>bewegingscompensatie</b> weer aan.",
-    a: "Achteraan sluit de scan niet aan: de vangrail maakt een sprong van ~3 m. 20 Hz halveert de fout. Deskew met odometrie of IMU corrigeert de eigen beweging. Ander verkeer beweegt ook tijdens de scan; dat lost deskew niet op."
-  },
-  {
-    t: "Regen en nat wegdek",
-    set: { preset: "vlp16", world: "highway", rain: 0.8, wet: true, color: "source", live: true },
-    u: "Regendruppels geven losse spikkels dicht bij de sensor en verzwakken het signaal. Een nat wegdek is spiegelend: het licht kaatst weg in plaats van terug.",
-    q: "Let op de meetwaarden <b>bereik wit/zwart</b> en <b>stopafstand</b>. Zet daarna regen op droog en het wegdek droog. Wat valt op?",
-    a: "Op het natte wegdek verdwijnen de grondpunten op afstand bijna volledig, waardoor rijbaan en markering moeilijk te detecteren zijn. De regen geeft ruispunten dichtbij en verkort het bereik, terwijl de stopafstand op nat wegdek net langer wordt."
-  },
-  {
-    t: "Stof: eerste of laatste echo?",
-    set: { preset: "vlp16", world: "farm", dust: true, dustD: 0.7, color: "source", ped: { x: 12, y: 0.5 } },
-    u: "Een stofwolk (oogst, grondbewerking, onverharde weg) kaatst een deel van het licht terug. Veel lidars kunnen meerdere echo's per puls meten.",
-    q: "Met <b>eerste echo</b>: wat zie je in de stofwolk, en wordt de persoon in de wolk nog gezien? Schakel naar <b>laatste echo</b> en vergelijk. Welk nadeel heeft laatste echo?",
-    a: "Met eerste echo vormt het stof een muur van punten: een noodstop zou triggeren en de persoon wordt grotendeels gemist. Met laatste echo kijk je door het stof. Nadeel: dunne of halftransparante objecten (draad, takken, glas) v\xF3\xF3r iets anders gaan verloren."
-  },
-  {
-    t: "Persoon in het gewas en een draadafsluiting",
-    set: { preset: "vlp16", world: "farm", color: "height", objects: "ghost" },
-    u: "Een gewas van 0,8 m is voor de lidar een muur: alles erachter en eronder is onzichtbaar. Een draad is maar enkele millimeter dik.",
-    q: "Hoeveel punten krijgt de <b>persoon tussen het gewas</b>, en op welke hoogte liggen die punten? Wordt de <b>draadafsluiting</b> gezien?",
-    a: "Enkel het bovenlichaam boven het gewas levert punten op. De draad levert enkel punten waar een laag toevallig op draadhoogte zit: een paar losse boogjes dichtbij, geen doorlopende lijn, en op afstand niets meer."
-  },
-  {
-    t: "Statisch vs roterend, en de montageplaats",
-    set: { preset: "solid", color: "height" },
-    u: "Een solid-state lidar zit in de grille: geen draaiende delen, maar een beperkt gezichtsveld (120\xB0). Een roterende op het dak ziet rondom, maar het dak schermt de onderste lagen af.",
-    q: "Wat ziet de solid-state lidar niet? Kies daarna <b>Roterend, 64 lagen</b> en vergelijk <b>Dak, midden</b> met <b>Dak, boven voorruit</b>: let op % geblokkeerd en op de hond vlak voor de wagen.",
-    a: "Alles naast en achter de wagen valt buiten beeld; voor 360\xB0 zijn 3\u20135 sensoren nodig. Op het dak midden blokkeert het dak en de motorkap de onderste lagen: een hond vlak voor de bumper wordt niet gezien. Daarom combineren seriewagens een lidar achter de voorruit of in de grille met radar en ultrasoon rondom."
-  }
-];
-var experiments_default = EXPS;
-
 // src/core/experiments.js
+var EXPS2 = SENSORS.flatMap((s) => s.experiments);
 function applyState(over) {
-  const keep = { color: S.color, psize: S.psize, live: S.live };
   const ns = JSON.parse(JSON.stringify(BASE));
-  Object.assign(ns, keep);
-  const pr = over.preset || "vlp16";
-  Object.assign(ns, PRESETS[pr]);
-  ns.preset = pr;
   const w = WORLDSTART[over.world || "street"];
   ns.ped = { ...w.ped };
   ns.dog = { ...w.dog };
   ns.speed = w.speed;
   for (const k in over) {
-    if (k === "err") Object.assign(ns.err, over.err);
-    else if (!["drive", "view", "layout"].includes(k)) ns[k] = over[k];
+    if (!["drive", "view", "layout"].includes(k) && !SENSORS.some((s) => s.id === k)) ns[k] = over[k];
   }
-  for (const k in ns) S[k] = k === "err" || k === "ped" || k === "dog" ? Object.assign({}, ns[k]) : ns[k];
+  for (const k in ns) S[k] = k === "ped" || k === "dog" ? Object.assign({}, ns[k]) : ns[k];
+  for (const s of SENSORS) s.reset(over[s.id] || {});
   TDX.clear();
   S.vy = 0;
   EGO.yaw = 0;
@@ -1964,167 +2157,16 @@ function applyState(over) {
   F.pendingCam = over.view || "free";
 }
 function buildExps() {
-  $("exps").innerHTML = experiments_default.map((e, i) => '<div class="exp" id="exp' + i + '"><div class="nr">EXPERIMENT ' + (i + 1) + "</div><h3>" + e.t + "</h3><p>" + e.u + '</p><p class="q">' + e.q + '</p><button class="act" data-i="' + i + '">Instellen</button><details><summary>Toon antwoord</summary><p>' + e.a + "</p></details></div>").join("");
+  $("exps").innerHTML = EXPS2.map((e, i) => '<div class="exp" id="exp' + i + '"><div class="nr">EXPERIMENT ' + (i + 1) + "</div><h3>" + e.t + "</h3><p>" + e.u + '</p><p class="q">' + e.q + '</p><button class="act" data-i="' + i + '">Instellen</button><details><summary>Toon antwoord</summary><p>' + e.a + "</p></details></div>").join("");
   $("exps").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => {
     const i = +b.dataset.i;
-    applyState(experiments_default[i].set);
+    applyState(EXPS2[i].set);
     markExp(i);
     toast("Experiment " + (i + 1) + " ingesteld");
   }));
 }
 
-// src/sensors/lidar/mount3d.js
-import * as THREE7 from "three";
-var sensorGrp = new THREE7.Group();
-veh.add(sensorGrp);
-var mast = new THREE7.Mesh(new THREE7.CylinderGeometry(0.035, 0.045, 1, 10), rackMat);
-sensorGrp.add(mast);
-var puck = new THREE7.Group();
-{
-  const a = new THREE7.Mesh(new THREE7.CylinderGeometry(0.052, 0.052, 0.072, 28), new THREE7.MeshStandardMaterial({ color: 2896439, metalness: 0.6, roughness: 0.35 }));
-  const ring = new THREE7.Mesh(new THREE7.CylinderGeometry(0.053, 0.053, 0.03, 28), new THREE7.MeshStandardMaterial({ color: 724239, roughness: 0.1, metalness: 0.3 }));
-  puck.add(a, ring);
-}
-var ssBox = new THREE7.Mesh(new THREE7.BoxGeometry(0.09, 0.06, 0.13), new THREE7.MeshStandardMaterial({ color: 2238251, roughness: 0.3 }));
-sensorGrp.add(puck, ssBox);
-function updateSensorMesh() {
-  const mx = mountX(), H = S.mountH;
-  puck.visible = S.type === "rot";
-  ssBox.visible = !puck.visible;
-  for (const m of [puck, ssBox]) {
-    m.position.set(mx, H, 0);
-    m.rotation.set(0, S.err.yaw * D2R, 0);
-    m.rotateZ(-S.err.pitch * D2R);
-  }
-  const base = S.mount === "front" ? Math.min(H, 0.3) : carTop(mx);
-  const len = Math.max(5e-3, H - 0.04 - base);
-  mast.visible = len > 0.03;
-  mast.scale.set(1, len, 1);
-  mast.position.set(mx, base + len / 2, 0);
-}
-
-// src/sensors/lidar/metrics.js
-function legendHtml() {
-  const m = S.color;
-  if (m === "height") return '0 m<span class="barc" style="background:linear-gradient(90deg,hsl(240,85%,50%),hsl(120,85%,53%),hsl(0,85%,56%))"></span>3 m+';
-  if (m === "class") return '<span><i style="background:#8a949e"></i>grond (z &lt; 0,2 m)</span><span><i style="background:#ff9a1f"></i>obstakel</span>';
-  if (m === "intensity") return 'zwak<span class="barc" style="background:linear-gradient(90deg,hsl(45,95%,12%),hsl(45,95%,78%))"></span>sterk';
-  if (m === "layer") return 'onderste laag<span class="barc" style="background:linear-gradient(90deg,hsl(0,85%,55%),hsl(120,85%,55%),hsl(240,85%,55%),hsl(300,85%,55%))"></span>bovenste';
-  return SRCNAME.map((n, i) => '<span><i style="background:' + SRCCOL[i] + '"></i>' + n + "</span>").join("");
-}
-function metrics() {
-  const st = STAT, L = st.L, rows = [], pps = st.N * S.freq;
-  rows.push(["Stralen per scan", st.N.toLocaleString("nl-BE")]);
-  rows.push(["Stralen per seconde", pps.toLocaleString("nl-BE")]);
-  rows.push(["Gemeten punten (laatste scan)", st.n.toLocaleString("nl-BE")]);
-  rows.push(["Geblokkeerd door eigen wagen", nl(100 * st.blocked / st.N, 1) + " %", st.blocked / st.N > 0.05 ? "w" : ""]);
-  rows.push(["Horizontale puntafstand op 10 m", nl(10 * S.hres * D2R * 100, 1) + " cm"]);
-  rows.push(["Horizontale puntafstand op 100 m", nl(100 * S.hres * D2R * 100, 0) + " cm"]);
-  if (L > 1) {
-    const dv = S.vfov / (L - 1), g = 20 * Math.tan(dv * D2R), g2 = 100 * Math.tan(dv * D2R);
-    rows.push(["Hoek tussen lagen", nl(dv, 2) + "\xB0"]);
-    rows.push(["Afstand tussen lagen op 20 m", nl(g, 2) + " m", g > 0.5 ? "w" : ""]);
-    rows.push(["Afstand tussen lagen op 100 m", nl(g2, 2) + " m", g2 > 0.5 ? "w" : ""]);
-  } else rows.push(["Lagen", "1 \u2014 enkel het vlak op " + nl(S.mountH, 2) + " m", "w"]);
-  const elMin = S.vcenter - (L > 1 ? S.vfov / 2 : 0) + S.err.pitch;
-  rows.push(["Eerste grondpunt vooraan", elMin < 0 ? nl(S.mountH / Math.tan(-elMin * D2R), 1) + " m voor de sensor" : "grond nooit gezien", elMin < 0 ? "" : "r"]);
-  const rw = effRange(0.8), rb = effRange(0.05);
-  rows.push(["Bereik wit object (80 %)", nl(rw, 0) + " m"]);
-  rows.push(["Bereik zwart object (5 %)", nl(rb, 0) + " m", rb < S.rmax * 0.5 ? "w" : ""]);
-  const v = S.speed, stop = v * 1 + v * v / (2 * 7);
-  rows.push(["Stopafstand bij " + Math.round(v * 3.6) + " km/h (1 s + 7 m/s\xB2)", nl(stop, 0) + " m", stop > rb ? "w" : ""]);
-  if (S.type === "rot") rows.push(["Verplaatsing tijdens 1 scan", F.driving ? nl(S.speed / S.freq, 2) + " m" : "stilstand", F.driving && S.speed / S.freq > 0.3 && !S.deskew ? "w" : ""]);
-  if (S.err.yaw) rows.push(["Zijdelingse fout op 30 m (yaw)", nl(30 * Math.tan(Math.abs(S.err.yaw) * D2R), 2) + " m", "w"]);
-  if (S.err.pitch) rows.push(["Hoogtefout op 20 m (pitch)", nl(20 * Math.tan(Math.abs(S.err.pitch) * D2R), 2) + " m", "w"]);
-  $("metrics").innerHTML = "<table>" + rows.map((r) => '<tr><td class="lbl">' + r[0] + '</td><td><b class="' + (r[2] || "") + '">' + r[1] + "</b></td></tr>").join("") + "</table>";
-  let t = "<table>";
-  const done = /* @__PURE__ */ new Set();
-  for (const o of W.objs) {
-    if (!o.key || done.has(o.name)) continue;
-    done.add(o.name);
-    const n = st.cnt.get(o.name) || 0;
-    const cls = n === 0 ? "no" : n < 5 ? "lo" : "ok", lab = n === 0 ? "niet gezien" : n < 5 ? "zwak" : "gezien";
-    t += '<tr><td class="lbl">' + o.name + "</td><td>" + n + ' <span class="pill ' + cls + '">' + lab + "</span></td></tr>";
-  }
-  $("objtab").innerHTML = t + "</table>";
-  const cl = (n) => n === 0 ? "r" : n < 5 ? "w" : "g", sx = S.vx + mountX(), sy0 = S.vy;
-  const items = W.hud.map(([name, lab]) => {
-    const o = W.objs.find((q) => q.name === name);
-    const n = st.cnt.get(name) || 0;
-    const d = o && o.hx !== void 0 ? Math.hypot(o.hx + o.dx - sx, o.hy - sy0) : 0;
-    return lab + " (" + nl(d, 0) + ' m): <span class="' + cl(n) + '">' + n + "</span>";
-  });
-  const hud = (S.type === "rot" ? "roterend" : "solid-state") + " \xB7 " + S.layers + " lagen \xB7 " + S.hfov + "\xB0 \xB7 " + String(S.hres).replace(".", ",") + "\xB0 \xB7 " + S.freq + " Hz\n" + pps.toLocaleString("nl-BE") + " stralen/s \xB7 " + st.n.toLocaleString("nl-BE") + " punten" + (F.driving ? " \xB7 " + Math.round(S.speed * 3.6) + " km/h" : "") + (F.driving && S.type === "rot" && effHz > 0 && effHz < S.freq * 0.9 ? ' \xB7 <span class="w">pc haalt ' + nl(effHz, 0) + " van " + S.freq + " Hz</span>" : "") + "\n" + items.join(" \xB7 ");
-  $("hud").innerHTML = hud;
-  $("pcvHead").innerHTML = "<b>PUNTENWOLK</b>  /points \xB7 " + st.n.toLocaleString("nl-BE") + " punten \xB7 " + S.freq + " Hz\nringen 10 \xB7 20 \xB7 30 \xB7 50 \xB7 100 m";
-  const lg = legendHtml();
-  $("legend").innerHTML = lg;
-  $("pcvLeg").innerHTML = lg;
-}
-
-// src/sensors/lidar/index.js
-var scanAcc = 0;
-var liveAcc = 0;
-var lastMetrics = 0;
-var lidar_default = {
-  id: "lidar",
-  label: "Lidar",
-  params: controls_default,
-  // UI-schema (tabblad Sensor)
-  presets: PRESETS,
-  experiments: experiments_default,
-  // 3D-model op de wagen en het voertuigframe van het puntenwolkvenster bijwerken
-  update3d() {
-    pcvEgo.position.set(0, 0, 0);
-    pcvWorld.rotation.y = -EGO.yaw;
-    pcvWorld.position.set(-S.vx, 0, S.vy).applyAxisAngle(YAX, -EGO.yaw);
-    pcvSensor.position.set(mountX(), S.mountH, 0);
-    updateSensorMesh();
-  },
-  // meten: force = instelling of wereld gewijzigd → volledige scan
-  step(dt, now, force) {
-    scanAcc += dt;
-    liveAcc += dt;
-    if (force) {
-      fullScan(F.driving ? S.speed : 0);
-      scanAcc = 0;
-      liveAcc = 0;
-    } else if (F.driving) {
-      moveDynamicPoints(dt);
-      if (S.type === "rot") sweepStep(dt);
-      else if (scanAcc >= 1 / S.freq) {
-        fullScan(0);
-        scanAcc = 0;
-      }
-      updateRate(dt);
-    } else if (S.live && liveAcc > 0.3) {
-      fullScan(0);
-      liveAcc = 0;
-    }
-    if (force || (F.driving || S.live) && now - lastMetrics > 250) {
-      computeStats();
-      metrics();
-      lastMetrics = now;
-    }
-  },
-  animate(dt) {
-    if (pcvView !== "drv") pcvCtl.update();
-    updateBeams(dt);
-  },
-  render(layout) {
-    if (layout !== "world") pcvR.render(pcvScene, pcvCam);
-  },
-  stats: () => STAT,
-  bench() {
-    const t = performance.now();
-    fullScan(0);
-    computeStats();
-    return performance.now() - t;
-  }
-};
-
 // src/core/loop.js
-var SENSORS = [lidar_default];
 var last = performance.now();
 function frame(now) {
   const dt = Math.min(0.1, (now - last) / 1e3);
@@ -2178,7 +2220,7 @@ function frame(now) {
   }
   if (F.pendingCam) {
     setView(F.pendingCam);
-    setPcvView(pcvView);
+    for (const s of SENSORS) if (s.resetView) s.resetView();
     F.pendingCam = null;
     camSync();
   }
@@ -2212,10 +2254,10 @@ function start() {
   F.worldDirty = false;
   resize();
   setView("free");
-  setPcvView("3d");
+  for (const s of SENSORS) if (s.init) s.init();
   if (innerWidth < 860) setLayout("world");
   requestAnimationFrame(frame);
-  window.__sim = { EGO, S, applyState, EXPS: lidar_default.experiments, stat: lidar_default.stats, setLayout, W: () => W, bench: lidar_default.bench };
+  window.__sim = { EGO, S, SENSORS, applyState, EXPS: EXPS2, stat: SENSORS[0].stats, setLayout, W: () => W, bench: SENSORS[0].bench };
 }
 
 // src/main.js

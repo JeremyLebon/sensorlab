@@ -1,4 +1,4 @@
-/* sensors/lidar/controls.js — UI-schema van de lidar (tabblad Sensor) */
+/* sensors/lidar/controls.js — UI-schema van de lidar (tabblad Sensor); sleutels zonder prefix, core/ui.js zet er "lidar." voor */
 import {MOUNTS} from '../../core/vehicle.js';
 export default [
   {g:'Sensor',items:[
@@ -22,5 +22,10 @@ export default [
   {g:'Verwerking',items:[
    {k:'echo',t:'sel',label:'Echo-keuze',opts:[['first','Eerste echo'],['last','Laatste echo'],['strong','Sterkste echo']]},
    {k:'noise',label:'Afstandsruis (1σ)',min:0,max:0.15,step:0.005,u:' m',d:3},
-   {k:'deskew',t:'chk',label:'Bewegingscompensatie (deskew)'}]}
+   {k:'deskew',t:'chk',label:'Bewegingscompensatie (deskew)'}]},
+  {g:'Weergave puntenwolk',items:[
+   {k:'color',t:'sel',label:'Kleur punten',opts:[['height','Hoogte (berekend)'],['class','Grond / obstakel'],['intensity','Intensiteit'],['layer','Laag'],['source','Werkelijke oorzaak']]},
+   {k:'psize',label:'Puntgrootte',min:0.5,max:3,step:0.25,fmt:v=>String(v.toFixed(2)).replace('.',',')+'×'},
+   {k:'beams',t:'chk',label:'Stralen tonen (sweep vertraagd)'},
+   {k:'live',t:'chk',label:'Ruis en weer per scan vernieuwen'}]}
  ];

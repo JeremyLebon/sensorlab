@@ -7,11 +7,8 @@ import {updateRain,updateDust,updateFog} from './weather.js';
 import {view,setView,followCams,camSync,camSyncX} from './camera.js';
 import {resize} from './layout.js';
 import {buildControls,syncControls,setLayout} from './ui.js';
-import {applyState,buildExps} from './experiments.js';
-import {pcvView,setPcvView} from '../sensors/lidar/pcview.js';
-import lidar from '../sensors/lidar/index.js';
-
-export const SENSORS=[lidar];
+import {applyState,buildExps,EXPS} from './experiments.js';
+import {SENSORS} from './sensors.js';
 
 let last=performance.now();
 function frame(now){
@@ -28,7 +25,7 @@ function frame(now){
     if(W.dynamic)for(const o of W.objs)if(o.v){o.dx+=o.v*dt;const x=(o.hx??0)+o.dx;if(x-S.vx>380)o.dx-=600;else if(x-S.vx<-220)o.dx+=600;TDX.set(o.uid,o.dx);if(o.group)o.group.position.x=o.dx;}
     if(S.vx>W.end){S.vx=W.start;TDX.clear();F.worldDirty=true;const sh=W.end-W.start;camera.position.x-=sh;controls.target.x-=sh;camSyncX();}}
   if(F.worldDirty){buildWorld();buildWorldMeshes();F.worldDirty=false;F.dirty=true;}
-  if(F.pendingCam){setView(F.pendingCam);setPcvView(pcvView);F.pendingCam=null;camSync();}
+  if(F.pendingCam){setView(F.pendingCam);for(const s of SENSORS)if(s.resetView)s.resetView();F.pendingCam=null;camSync();}
   veh.position.set(S.vx,0,-S.vy);veh.rotation.y=EGO.yaw;
   for(const s of SENSORS)s.update3d();
   const force=F.dirty;F.dirty=false;
@@ -46,9 +43,9 @@ export function start(){
   new ResizeObserver(resize).observe($('viewsBox'));
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{themeColors();updateFog();});
   buildControls();buildExps();syncControls();
-  buildWorld();buildWorldMeshes();F.worldDirty=false;resize();setView('free');setPcvView('3d');
+  buildWorld();buildWorldMeshes();F.worldDirty=false;resize();setView('free');for(const s of SENSORS)if(s.init)s.init();
   if(innerWidth<860)setLayout('world');
   requestAnimationFrame(frame);
   // testhaak (tests/smoke.mjs)
-  window.__sim={EGO,S,applyState,EXPS:lidar.experiments,stat:lidar.stats,setLayout,W:()=>W,bench:lidar.bench};
+  window.__sim={EGO,S,SENSORS,applyState,EXPS,stat:SENSORS[0].stats,setLayout,W:()=>W,bench:SENSORS[0].bench};
 }

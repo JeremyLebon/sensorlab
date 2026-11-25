@@ -22,24 +22,34 @@ offline als IIFE met three inline, en een CDN-versie (ESM, three extern via een 
 - Circulaire imports bestaan (bv. `scan` ↔ `pointcloud`, `ui` ↔ `experiments`). Ze werken zolang **top-level code** enkel modules gebruikt die al geëvalueerd zijn. Gebruik over de grens heen enkel binnen functies. Na elke wijziging: `npm test`, want een TDZ-fout verschijnt pas in de browser.
 - `npm run lint` (eslint, `no-undef`) vangt vergeten imports, ook in event-handlers die de rooktest niet raakt.
 
-**Sensor-interface** (`sensors/lidar/index.js`). `core/loop.js` overloopt `SENSORS` en roept per frame `update3d()` → `step(dt, now, force)` → `animate(dt)` → `render(layout)` aan:
+**Sensoren en toestand (stap 2b)**
+- `S` (`core/state.js`) bevat enkel wereld, weer en voertuig. Elke sensor heeft een eigen toestand in `sensors/<id>/state.js` (lidar: `L`, met `LBASE` als standaard).
+- Register: `core/sensors.js` (`SENSORS`, `SMAP`). **Een sensor-module importeert nooit** `core/ui`, `camera`, `layout`, `experiments`, `loop` of `sensors` (anders een cyclus bij het laden). Core spreekt de sensor enkel via de interface aan.
+- UI: de sleutels in `params` staan zonder prefix. `core/ui.js` zet er `<id>.` voor (bv. `lidar.err.yaw`); `getK`/`setK` routeren dat naar `sensor.state`.
+- Experimenten: `set:{world, ped, speed, rain, objects, …, drive, view, layout, lidar:{preset, color, err, …}}`. `applyState` zet `S` terug op `BASE` en roept daarna `sensor.reset(set[id]||{})` op.
+- Let op bij het hernoemen: een lokale variabele met dezelfde naam als een import (bv. `L` = aantal lagen tegenover `L` = lidartoestand) geeft een TDZ-fout. Daarom staat `no-shadow` in eslint.
+
+**Sensor-interface** (`sensors/lidar/index.js`). `core/loop.js` roept per frame `update3d()` → `step(dt, now, force)` → `animate(dt)` → `render(layout)` op:
 
 ```js
 export default {
   id: 'lidar', label: 'Lidar',
-  params,              // UI-schema tabblad Sensor (controls.js)
-  presets, experiments,
-  update3d() {},       // sensor op de wagen + voertuigframe van het eigen venster
-  step(dt, now, force) {},   // meten; force = volledige scan na een wijziging
-  animate(dt) {},      // stralen-sweep, camerabesturing eigen venster
-  render(layout) {},   // eigen venster(s) tekenen
+  state,                     // eigen toestand (UI-sleutels "<id>.<key>")
+  params, presets, experiments,
+  views: [{stage, renderer, camera}],   // eigen vensters; core/layout.js past de grootte aan
+  onChange(key) {}, disabled(key) {},   // UI-logica (presets, minimale montagehoogte, uitgeschakelde velden)
+  reset(set) {},             // experiment instellen
+  eye() {},                  // {x, h}: camerastandpunt "Vanuit sensor"
+  init() {}, resetView() {},
+  update3d() {}, step(dt, now, force) {}, animate(dt) {}, render(layout) {},
   stats(), bench()
 }
 ```
 
-**Nog niet gescheiden (stap 2b)**
-- De lidar-parameters staan nog in de gedeelde `S` (`type … deskew`, `color`, `psize`, `beams`). Plan: per sensor een eigen toestand `sensor.state`, `getK`/`setK` in `core/ui.js` laten routeren via een prefix (bv. `lidar.layers`), en `applyState` laat experimenten `set:{world:…, lidar:{…}}` geven.
-- `core/camera.js`, `core/layout.js`, `core/ui.js` en `core/experiments.js` importeren nog rechtstreeks uit `sensors/lidar` (puntenwolkvenster, presets, montageplaats). Bij een tweede sensor: de views en de layoutknoppen generiek maken.
+**Nog lidar-specifiek bij een tweede sensor**
+- `src/index.html`: het venster `#pcvStage` en de layoutknoppen ("Enkel puntenwolk") staan vast in de HTML. Die moeten per sensor gegenereerd worden.
+- Meettabellen en HUD: `metrics.js` schrijft rechtstreeks in `#hud`, `#objtab` en `#metrics`. Een tweede sensor heeft een eigen sectie nodig, of de HUD combineert de sensoren.
+- Ruis door een andere lidar (`S.interf`) staat in de omgeving: dat is bewust zo.
 
 Een nieuwe wereld: `src/worlds/x.js` met `export default {label, build(h){… return W}, isMark(x,y), marks(dashes,solids,W)}`. Toevoegen aan `WORLDS` in `core/world.js`, aan de keuzelijst in `core/ui.js` (`CTRL.env`) en aan `WORLDSTART` in `core/state.js`.
 
@@ -64,6 +74,6 @@ Rekentijd per volledige scan (headless Chrome, swiftshader): 16 lagen ±20 ms, 6
 ## Open punten
 
 - Experimenten nalezen (Nobel).
-- Stap 2b (toestand per sensor), daarna worker, daarna radar als eerste nieuwe sensor (sensorfusie: radar door stof en mist).
+- Worker, daarna radar als eerste nieuwe sensor (sensorfusie: radar door stof en mist).
 - Eventueel: GitHub Pages als alternatief voor uploaden in Toledo; `/points` publiceren via rosbridge; koppeling met het CR0451-labo.
 - Bekend klein lay-outpunt: bij smalle 3D-weergave overlapt de knoppenbalk "Camera / Persoon / Hond" de rijknoppen.

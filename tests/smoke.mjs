@@ -41,7 +41,7 @@ ok(vx > 5, `rijden: voertuig op x = ${vx.toFixed(1)} m`);
 await page.evaluate(() => window.__sim.applyState({world: 'street'}));
 await settle();
 for (const p of ['vlp16', 'os64', 'hr128']) {
-  await page.evaluate(p => window.__sim.applyState({preset: p}), p);
+  await page.evaluate(p => window.__sim.applyState({lidar: {preset: p}}), p);
   await settle();
   const ms = await page.evaluate(() => { let t = 0; for (let i = 0; i < 3; i++) t += window.__sim.bench(); return t / 3; });
   console.log(`  info volledige scan ${p}: ${ms.toFixed(0)} ms`);
