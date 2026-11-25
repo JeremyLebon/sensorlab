@@ -53,12 +53,12 @@ body{background:var(--bg);color:var(--fg);font:15px/1.45 var(--f-body);display:f
 .tb button.on{background:var(--fg);color:var(--surface)}
 #views{left:12px;bottom:12px}
 #modes{left:12px;bottom:52px}
-#drive{right:12px;top:12px}
+#drive{left:12px;bottom:92px}
 #drive button.on{background:var(--acc);color:var(--surface)}
 .seg{display:flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
 .seg button{border:0;border-right:1px solid var(--line);background:transparent;color:var(--fg);font:500 13px var(--f-body);padding:6px 11px;cursor:pointer}
 .seg button:last-child{border-right:0}.seg button.on{background:var(--fg);color:var(--surface)}
-.legend{position:absolute;right:12px;top:56px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;font:12px var(--f-mono);color:var(--muted);
+.legend{position:absolute;right:12px;bottom:136px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;font:12px var(--f-mono);color:var(--muted);
   background:color-mix(in srgb,var(--surface) 85%,transparent);padding:4px 8px;border-radius:5px;max-width:50%}
 .legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
 .legend .barc{width:90px;height:9px;border-radius:2px;display:inline-block;vertical-align:-1px;margin:0 4px}
@@ -221,7 +221,7 @@ var WORLDSTART = { street: { ped: { x: 12, y: 1.2 }, dog: { x: 7, y: -1.8 }, spe
 // src/worlds/street.js
 var street_default = {
   label: "Straat",
-  build({ O, box, cyl, wall, car, person }) {
+  build({ O, box: box2, cyl, wall, car, person }) {
     let o;
     const W2 = {
       ground: "street",
@@ -237,7 +237,7 @@ var street_default = {
     o = O("Voetganger", 0.35, "#e2557a", { key: true });
     person(o, S.ped.x, S.ped.y);
     o = O("Hond (0,5 m)", 0.3, "#c98a4b", { key: true });
-    box(o, S.dog.x, S.dog.y, 0.75, 0.28, 0, 0.5, 0.4, "dog");
+    box2(o, S.dog.x, S.dog.y, 0.75, 0.28, 0, 0.5, 0.4, "dog");
     o.hx = S.dog.x;
     o.hy = S.dog.y;
     o = O("Witte auto", 0.7, "#f1f4f6", { key: true });
@@ -245,36 +245,36 @@ var street_default = {
     o = O("Zwarte auto (5 %)", 0.05, "#16191c", { key: true });
     car(o, 25, 4.6, Math.PI);
     o = O("Vrachtwagen-laadbak (vanaf 1,0 m)", 0.45, "#3d7cc9", { key: true });
-    box(o, 38, -3.4, 6.5, 2.4, 1, 3.6);
+    box2(o, 38, -3.4, 6.5, 2.4, 1, 3.6);
     o = O("Vrachtwagen-cabine en wielen", 0.45, "#2f5e98");
-    box(o, 42.4, -3.4, 2.2, 2.4, 0.4, 3.2);
-    for (const x of [37.5, 40.8]) for (const y of [-2.4, -4.4]) box(o, x, y, 1, 0.3, 0, 1, 0, "wheel");
+    box2(o, 42.4, -3.4, 2.2, 2.4, 0.4, 3.2);
+    for (const x of [37.5, 40.8]) for (const y of [-2.4, -4.4]) box2(o, x, y, 1, 0.3, 0, 1, 0, "wheel");
     o = O("Slagboom (0,9\u20131,0 m)", 0.6, "#e04848", { key: true });
-    box(o, 52, -0.6, 0.1, 7.6, 0.9, 1);
+    box2(o, 52, -0.6, 0.1, 7.6, 0.9, 1);
     o = O("Slagboompaal", 0.5, "#cfd5da");
-    box(o, 52, -4.8, 0.3, 0.3, 0, 1.1);
+    box2(o, 52, -4.8, 0.3, 0.3, 0, 1.1);
     o = O("Stoeprand (15 cm)", 0.25, "#9aa3ab", { key: true });
     wall(o, -60, -5.9, 110, -5.9, 0, 0.15, 0.25);
     wall(o, -60, 7.9, 110, 7.9, 0, 0.15, 0.25);
     o = O("Palen (\xD8 12 cm)", 0.5, "#7fb03c", { key: true });
     for (let x = -36; x <= 100; x += 8) cyl(o, x + 2, -7.2, 0.06, 0, 3.5);
     o = O("Verkeersbord (retroreflecterend)", 3, "#2a8fd6", { key: true });
-    box(o, 20, -7.6, 0.05, 0.8, 1.7, 2.4);
+    box2(o, 20, -7.6, 0.05, 0.8, 1.7, 2.4);
     o = O("Paal verkeersbord", 0.5, "#9aa3ab");
     cyl(o, 20, -7.6, 0.04, 0, 1.7);
     o = O("Glaswand bushokje", 0.08, "#8fc4ff", { glass: true, key: true });
     wall(o, 22, 9.4, 29, 9.4, 0, 2.5, 0.04);
     o = O("Bushokje (dak en zijkant)", 0.4, "#7b8794");
-    box(o, 25.5, 10.4, 7.2, 2.2, 2.5, 2.65);
+    box2(o, 25.5, 10.4, 7.2, 2.2, 2.5, 2.65);
     wall(o, 22, 9.4, 22, 11.4, 0, 2.5, 0.08);
     o = O("Persoon achter glas", 0.35, "#e2557a", { key: true });
     person(o, 25.5, 10.6);
     o = O("Haag", 0.15, "#4f9a52", { key: true });
-    box(o, -10, -10, 8, 1.4, 0, 1.3);
+    box2(o, -10, -10, 8, 1.4, 0, 1.3);
     o = O("Gebouw", 0.4, "#a7b0b8");
-    box(o, 46, 19, 18, 8, 0, 9);
-    box(o, -26, 16, 14, 8, 0, 7);
-    box(o, 8, 17, 12, 7, 0, 6);
+    box2(o, 46, 19, 18, 8, 0, 9);
+    box2(o, -26, 16, 14, 8, 0, 7);
+    box2(o, 8, 17, 12, 7, 0, 6);
     o = O("Muur", 0.5, "#a7b0b8");
     wall(o, -60, -15, 110, -15, 0, 2.5, 0.3);
     return W2;
@@ -295,7 +295,7 @@ var street_default = {
 // src/worlds/highway.js
 var highway_default = {
   label: "Snelweg",
-  build({ O, box, cyl, wall, car, truck, person }) {
+  build({ O, box: box2, cyl, wall, car, truck, person }) {
     let o;
     const W2 = {
       ground: "highway",
@@ -317,7 +317,7 @@ var highway_default = {
     o = O("Vrachtwagen met oplegger", 0.45, "#d9dde0", { key: true, v: 24 });
     truck(o, 70, -3.5);
     o = O("Motorrijder", 0.3, "#2d2f33", { key: true, v: 36 });
-    box(o, -45, 3.5, 2.1, 0.75, 0, 1.5, 0, false);
+    box2(o, -45, 3.5, 2.1, 0.75, 0, 1.5, 0, false);
     o.models.push({ k: "moto", cx: -45, cy: 3.5 });
     o.hx = -45;
     o.hy = 3.5;
@@ -338,20 +338,20 @@ var highway_default = {
     wall(o, -300, -8.8, 1100, -8.8, 0.55, 0.8, 0.08);
     wall(o, -300, 18.2, 1100, 18.2, 0.55, 0.8, 0.08);
     o = O("Vangrailpalen", 0.4, "#8d959c");
-    for (let x = -120; x <= 1100; x += 4) box(o, x, -8.9, 0.1, 0.1, 0, 0.8);
+    for (let x = -120; x <= 1100; x += 4) box2(o, x, -8.9, 0.1, 0.1, 0, 0.8);
     o = O("Middenberm (New Jersey, 0,85 m)", 0.35, "#c5c3bc", { key: true });
-    box(o, 400, 5.95, 1400, 0.6, 0, 0.85);
+    box2(o, 400, 5.95, 1400, 0.6, 0, 0.85);
     o = O("Hectometerpaaltjes (retro)", 2, "#f2f4f5", { key: true });
-    for (let x = -200; x <= 1100; x += 100) box(o, x, -9.3, 0.12, 0.12, 0, 1);
+    for (let x = -200; x <= 1100; x += 100) box2(o, x, -9.3, 0.12, 0.12, 0, 1);
     o = O("Portiek met borden", 0.5, "#8d959c", { key: true });
-    box(o, 240, -10, 0.5, 0.5, 0, 7.2);
-    box(o, 240, 19, 0.5, 0.5, 0, 7.2);
-    box(o, 240, 4.5, 0.6, 29.5, 6.5, 7.1);
+    box2(o, 240, -10, 0.5, 0.5, 0, 7.2);
+    box2(o, 240, 19, 0.5, 0.5, 0, 7.2);
+    box2(o, 240, 4.5, 0.6, 29.5, 6.5, 7.1);
     o = O("Borden boven de weg (retro)", 3, "#1f6fb8", { key: true });
-    for (const y of [-3.5, 0, 3.5]) box(o, 239.6, y, 0.12, 3.3, 5.3, 6.9);
+    for (const y of [-3.5, 0, 3.5]) box2(o, 239.6, y, 0.12, 3.3, 5.3, 6.9);
     o = O("Brug (onderkant 5,4 m)", 0.35, "#b0b4b3", { key: true });
-    box(o, 520, 4.5, 12, 56, 5.4, 6.4);
-    for (const y of [-11.5, 5.95, 20]) box(o, 520, y, 1.2, 1.2, 0, 5.4);
+    box2(o, 520, 4.5, 12, 56, 5.4, 6.4);
+    for (const y of [-11.5, 5.95, 20]) box2(o, 520, y, 1.2, 1.2, 0, 5.4);
     o = O("Geluidsmuur", 0.3, "#8b9a86");
     wall(o, -300, -14, 1100, -14, 0, 4, 0.3);
     return W2;
@@ -370,17 +370,17 @@ var highway_default = {
 // src/worlds/farm.js
 var farm_default = {
   label: "Erf en akker",
-  build({ O, box, cyl, wall, person }) {
+  build({ O, box: box2, cyl, wall, person }) {
     let o;
     const W2 = { ground: "farm", lanes: [0], x0: -40, x1: 90, roads: [[-3, 3]], start: 0, end: 40, dust: { dx: 10, dy: 0, r: 5 }, hud: [["Persoon (in het veld)", "persoon"], ["Hond (0,5 m)", "hond"]] };
     o = O("Persoon (in het veld)", 0.35, "#e2557a", { key: true });
     person(o, S.ped.x, S.ped.y);
     o = O("Hond (0,5 m)", 0.3, "#c98a4b", { key: true });
-    box(o, S.dog.x, S.dog.y, 0.75, 0.28, 0, 0.5, 0.4, "dog");
+    box2(o, S.dog.x, S.dog.y, 0.75, 0.28, 0, 0.5, 0.4, "dog");
     o.hx = S.dog.x;
     o.hy = S.dog.y;
     o = O("Ma\xEFsrijen (0,8 m)", 0.2, "#6b9a3a", { key: true });
-    for (let i = 0; i < 12; i++) box(o, 25, 5 + i * 0.75, 40, 0.25, 0, 0.8);
+    for (let i = 0; i < 12; i++) box2(o, 25, 5 + i * 0.75, 40, 0.25, 0, 0.8);
     o = O("Persoon tussen gewas", 0.35, "#e2557a", { key: true });
     person(o, 22, 8.4);
     o = O("Ronde balen", 0.3, "#d9b45a", { key: true });
@@ -391,16 +391,16 @@ var farm_default = {
     o = O("Afsluitpalen (\xD8 10 cm)", 0.3, "#8a6a45", { key: true });
     for (let x = -30; x <= 80; x += 5) cyl(o, x, -12, 0.05, 0, 1.2);
     o = O("Tractor", 0.4, "#2f8a3d", { key: true });
-    box(o, 32, -4.5, 3.2, 1.9, 0.6, 1.6);
-    box(o, 31.5, -4.5, 1.6, 1.4, 1.6, 2.9);
+    box2(o, 32, -4.5, 3.2, 1.9, 0.6, 1.6);
+    box2(o, 31.5, -4.5, 1.6, 1.4, 1.6, 2.9);
     for (const [x, y, r] of [[30.7, -3.6, 0.8], [30.7, -5.4, 0.8], [33.3, -3.7, 0.5], [33.3, -5.3, 0.5]]) cyl(o, x, y, r * 0.35, 0, r * 2, "twheel");
     o = O("Schuur", 0.4, "#a94f3c");
-    box(o, 0, 16, 20, 10, 0, 7);
+    box2(o, 0, 16, 20, 10, 0, 7);
     o = O("Silo", 0.6, "#c9ced2");
     cyl(o, -16, 12, 3, 0, 12);
     o = O("Graanwagen (vanaf 1,1 m)", 0.4, "#d07a2a", { key: true });
-    box(o, 48, -4, 5, 2.3, 1.1, 3);
-    for (const x of [47, 49]) for (const y of [-3, -5]) box(o, x, y, 1, 0.35, 0, 1.1, 0, "wheel");
+    box2(o, 48, -4, 5, 2.3, 1.1, 3);
+    for (const x of [47, 49]) for (const y of [-3, -5]) box2(o, x, y, 1, 0.35, 0, 1.1, 0, "wheel");
     return W2;
   },
   isMark() {
@@ -422,26 +422,26 @@ function buildWorld() {
     objs.push(o);
     return o;
   };
-  const box = (o, cx, cy, lx, ly, z0, z1, yaw = 0, vis = true) => o.parts.push({ s: "box", cx, cy, lx, ly, z0, z1, yaw, vis });
+  const box2 = (o, cx, cy, lx, ly, z0, z1, yaw = 0, vis = true) => o.parts.push({ s: "box", cx, cy, lx, ly, z0, z1, yaw, vis });
   const cyl = (o, cx, cy, r, z0, z1, vis = true) => o.parts.push({ s: "cyl", cx, cy, r, z0, z1, vis });
   const wall = (o, x1, y1, x2, y2, z0, z1, t = 0.2, vis = true) => o.parts.push({ s: "wall", x1, y1, x2, y2, z0, z1, t, vis });
   const car = (o, cx, cy, yaw, col) => {
     const c = Math.cos(yaw), s = Math.sin(yaw), L2 = (lx, ly) => [cx + lx * c - ly * s, cy + lx * s + ly * c];
-    box(o, cx, cy, 4.66, 1.84, 0.25, 0.97, yaw, false);
+    box2(o, cx, cy, 4.66, 1.84, 0.25, 0.97, yaw, false);
     const p = L2(-0.28, 0);
-    box(o, p[0], p[1], 2.55, 1.52, 0.97, 1.43, yaw, false);
+    box2(o, p[0], p[1], 2.55, 1.52, 0.97, 1.43, yaw, false);
     for (const [a, b] of [[1.42, 0.82], [1.42, -0.82], [-1.42, 0.82], [-1.42, -0.82]]) {
       const q = L2(a, b);
-      box(o, q[0], q[1], 0.66, 0.22, 0, 0.66, yaw, false);
+      box2(o, q[0], q[1], 0.66, 0.22, 0, 0.66, yaw, false);
     }
     o.models.push({ k: "car", cx, cy, yaw, col: col || o.col });
     o.hx = cx;
     o.hy = cy;
   };
   const truck = (o, cx, cy, yaw = 0) => {
-    box(o, cx, cy, 13.6, 2.55, 1.15, 4, 0, false);
-    box(o, cx + 8.2, cy, 2.4, 2.5, 0.5, 3.3, 0, false);
-    for (const x of [cx - 5.6, cx - 4.3, cx - 3, cx + 7.6, cx + 9]) for (const y of [cy + 1, cy - 1]) box(o, x, y, 1, 0.35, 0, 1, 0, false);
+    box2(o, cx, cy, 13.6, 2.55, 1.15, 4, 0, false);
+    box2(o, cx + 8.2, cy, 2.4, 2.5, 0.5, 3.3, 0, false);
+    for (const x of [cx - 5.6, cx - 4.3, cx - 3, cx + 7.6, cx + 9]) for (const y of [cy + 1, cy - 1]) box2(o, x, y, 1, 0.35, 0, 1, 0, false);
     o.models.push({ k: "truck", cx, cy, col: o.col });
     o.hx = cx;
     o.hy = cy;
@@ -451,7 +451,7 @@ function buildWorld() {
     o.hx = x;
     o.hy = y;
   };
-  W = WORLDS[S.world].build({ O, box, cyl, wall, car, truck, person });
+  W = WORLDS[S.world].build({ O, box: box2, cyl, wall, car, truck, person });
   objs.forEach((o, i) => {
     o.idx = i;
     o.uid = o.name + "#" + i;
@@ -465,16 +465,16 @@ function buildPrims() {
   const P = [];
   for (const ob of W.objs) {
     const dx = ob.dx;
-    for (const p of ob.parts) {
+    ob.parts.forEach((p, pi) => {
       if (p.s === "box") {
         const c = Math.cos(p.yaw), s = Math.sin(p.yaw), pts = [[1, 1], [-1, 1], [-1, -1], [1, -1]].map(([a, b]) => [dx + p.cx + a * p.lx / 2 * c - b * p.ly / 2 * s, p.cy + a * p.lx / 2 * s + b * p.ly / 2 * c]);
         for (let i = 0; i < 4; i++) {
           const A = pts[i], B = pts[(i + 1) % 4];
-          P.push({ k: 0, o: ob, x1: A[0], y1: A[1], x2: B[0], y2: B[1], z0: p.z0, z1: p.z1 });
+          P.push({ k: 0, o: ob, pi, x1: A[0], y1: A[1], x2: B[0], y2: B[1], z0: p.z0, z1: p.z1 });
         }
-      } else if (p.s === "cyl") P.push({ k: 1, o: ob, cx: dx + p.cx, cy: p.cy, r: p.r, z0: p.z0, z1: p.z1 });
-      else P.push({ k: 0, o: ob, x1: dx + p.x1, y1: p.y1, x2: dx + p.x2, y2: p.y2, z0: p.z0, z1: p.z1 });
-    }
+      } else if (p.s === "cyl") P.push({ k: 1, o: ob, pi, cx: dx + p.cx, cy: p.cy, r: p.r, z0: p.z0, z1: p.z1 });
+      else P.push({ k: 0, o: ob, pi, x1: dx + p.x1, y1: p.y1, x2: dx + p.x2, y2: p.y2, z0: p.z0, z1: p.z1 });
+    });
   }
   W.prims = P;
   for (const f of onPrims) f();
@@ -1254,7 +1254,7 @@ function measure(rng, ox, oy, oz, az, el) {
   const r = cast(rng, ox, oy, oz, az, el), a = alphaAir(), th = sTh(), cands = [];
   const span = S.dust ? dustSpan(ox, oy, r.dx, r.dy) : null, kd = S.dustD * 0.12;
   if (r.hO) {
-    const R = r.hT / r.cE;
+    const R2 = r.hT / r.cE;
     let rho = r.hO.rho, src = 1;
     if (r.hO === GROUND) {
       src = 0;
@@ -1268,14 +1268,14 @@ function measure(rng, ox, oy, oz, az, el) {
       rho = 0.08;
       src = 2;
     }
-    if (r.hO.thin) rho *= Math.min(1, r.hO.thin / (3e-3 * R + 8e-3));
+    if (r.hO.thin) rho *= Math.min(1, r.hO.thin / (3e-3 * R2 + 8e-3));
     let dT = 1;
     if (span) {
       const Ld = Math.max(0, Math.min(span[1], r.hT) - span[0]);
       dT = Math.exp(-2 * kd * Ld / r.cE);
     }
-    const sig = rho * r.trans * Math.exp(-2 * a * R) * dT / (R * R);
-    if (sig >= th && R >= 0.3) cands.push({ R, sig, src, o: r.hO });
+    const sig = rho * r.trans * Math.exp(-2 * a * R2) * dT / (R2 * R2);
+    if (sig >= th && R2 >= 0.3) cands.push({ R: R2, sig, src, o: r.hO });
   }
   const solidR = cands.length ? cands[0].R : 1e9;
   const part = (rate, rho, src, start2, end) => {
@@ -1323,9 +1323,9 @@ function computeColumns(j, out) {
       else {
         const m = measure(rng, ox, oy, H, azR + j.ayaw, elR);
         if (m) {
-          const R = m.R + (L.noise > 0 ? gauss(rng) * L.noise : 0);
-          if (R >= 0.3) {
-            const elN = els[jj], hz = R * Math.cos(elN), z = H + L.err.h + R * Math.sin(elN);
+          const R2 = m.R + (L.noise > 0 ? gauss(rng) * L.noise : 0);
+          if (R2 >= 0.3) {
+            const elN = els[jj], hz = R2 * Math.cos(elN), z = H + L.err.h + R2 * Math.sin(elN);
             const hx = mx + L.err.x + hz * cA, hy = hz * sA;
             pa[k * 3] = qx + hx * cq - hy * sq;
             pa[k * 3 + 1] = z;
@@ -1429,13 +1429,13 @@ function updateBeams(dt) {
   for (const [azN, j] of rays) {
     const azR = (azN + L.err.yaw) * D2R, elR = els[j] + L.err.pitch * D2R * Math.cos(azN * D2R);
     const dx = Math.cos(azR), dy = Math.sin(azR);
-    let len, hit = false;
+    let len, hit2 = false;
     if (selfBlock(mx, 0, H, dx, dy, Math.tan(elR))) len = 0.35;
     else {
       const m = measure(rng, ox, oy, H, azR + yw, elR);
       if (m) {
         len = m.R;
-        hit = true;
+        hit2 = true;
       } else len = Math.min(L.rmax, 60);
     }
     const ce = Math.cos(elR), wx = Math.cos(azR + yw), wy = Math.sin(azR + yw);
@@ -1446,7 +1446,7 @@ function updateBeams(dt) {
     pa[k++] = ex;
     pa[k++] = ez;
     pa[k++] = -ey;
-    if (hit) {
+    if (hit2) {
       ha[h++] = ex;
       ha[h++] = ez;
       ha[h++] = -ey;
@@ -1459,7 +1459,7 @@ function updateBeams(dt) {
 }
 
 // lw:virtual:lidar-worker
-var virtual_lidar_worker_default = '(()=>{var h={world:"street",rain:0,fog:0,dust:!1,dustD:.6,wet:!1,interf:!1,speed:8,objects:"full",ped:{x:12,y:1.2},dog:{x:7,y:-1.8},vx:0,vy:0};var vt=JSON.parse(JSON.stringify(h));var E=Math.PI/180;function Y(t){return function(){t|=0,t=t+1831565813|0;let e=Math.imul(t^t>>>15,1|t);return e=e+Math.imul(e^e>>>7,61|e)^e,((e^e>>>14)>>>0)/4294967296}}var R=(t,e)=>(t%e+e)%e;function Q(t){return Math.sqrt(-2*Math.log(1-t()))*Math.cos(2*Math.PI*t())}var _={label:"Straat",build({O:t,box:e,cyl:s,wall:f,car:a,person:n}){let r,o={ground:"street",lanes:[0,3.5],x0:-60,x1:110,roads:[[-5.75,7.75]],start:0,end:46,dust:{dx:10,dy:-.5,r:4.5},hud:[["Voetganger","voetganger"],["Hond (0,5 m)","hond"]]};r=t("Voetganger",.35,"#e2557a",{key:!0}),n(r,h.ped.x,h.ped.y),r=t("Hond (0,5 m)",.3,"#c98a4b",{key:!0}),e(r,h.dog.x,h.dog.y,.75,.28,0,.5,.4,"dog"),r.hx=h.dog.x,r.hy=h.dog.y,r=t("Witte auto",.7,"#f1f4f6",{key:!0}),a(r,16,-3.6,0),r=t("Zwarte auto (5 %)",.05,"#16191c",{key:!0}),a(r,25,4.6,Math.PI),r=t("Vrachtwagen-laadbak (vanaf 1,0 m)",.45,"#3d7cc9",{key:!0}),e(r,38,-3.4,6.5,2.4,1,3.6),r=t("Vrachtwagen-cabine en wielen",.45,"#2f5e98"),e(r,42.4,-3.4,2.2,2.4,.4,3.2);for(let c of[37.5,40.8])for(let i of[-2.4,-4.4])e(r,c,i,1,.3,0,1,0,"wheel");r=t("Slagboom (0,9\\u20131,0 m)",.6,"#e04848",{key:!0}),e(r,52,-.6,.1,7.6,.9,1),r=t("Slagboompaal",.5,"#cfd5da"),e(r,52,-4.8,.3,.3,0,1.1),r=t("Stoeprand (15 cm)",.25,"#9aa3ab",{key:!0}),f(r,-60,-5.9,110,-5.9,0,.15,.25),f(r,-60,7.9,110,7.9,0,.15,.25),r=t("Palen (\\xD8 12 cm)",.5,"#7fb03c",{key:!0});for(let c=-36;c<=100;c+=8)s(r,c+2,-7.2,.06,0,3.5);return r=t("Verkeersbord (retroreflecterend)",3,"#2a8fd6",{key:!0}),e(r,20,-7.6,.05,.8,1.7,2.4),r=t("Paal verkeersbord",.5,"#9aa3ab"),s(r,20,-7.6,.04,0,1.7),r=t("Glaswand bushokje",.08,"#8fc4ff",{glass:!0,key:!0}),f(r,22,9.4,29,9.4,0,2.5,.04),r=t("Bushokje (dak en zijkant)",.4,"#7b8794"),e(r,25.5,10.4,7.2,2.2,2.5,2.65),f(r,22,9.4,22,11.4,0,2.5,.08),r=t("Persoon achter glas",.35,"#e2557a",{key:!0}),n(r,25.5,10.6),r=t("Haag",.15,"#4f9a52",{key:!0}),e(r,-10,-10,8,1.4,0,1.3),r=t("Gebouw",.4,"#a7b0b8"),e(r,46,19,18,8,0,9),e(r,-26,16,14,8,0,7),e(r,8,17,12,7,0,6),r=t("Muur",.5,"#a7b0b8"),f(r,-60,-15,110,-15,0,2.5,.3),o},isMark(t,e){return Math.abs(e-1)<.07&&R(t,6)<3||Math.abs(e+5.45)<.07||Math.abs(e-7.45)<.07||t>30&&t<34&&e>-5.6&&e<7.6&&R(e+5.6,1)<.5},marks(t,e,s){for(let f=s.x0;f<s.x1;f+=6)t.push([f+1.5,1,3,.14]);e.push([-5.45,.14],[7.45,.14]);for(let f=-5.6;f<7.6;f+=1)t.push([32,f+.25,4,.5])}};var $={label:"Snelweg",build({O:t,box:e,cyl:s,wall:f,car:a,truck:n,person:r}){let o,c={ground:"highway",lanes:[-3.5,0,3.5],x0:-300,x1:1100,roads:[[-8.2,5.6],[6.3,17.6]],start:0,end:860,dust:{dx:12,dy:0,r:5},hud:[["Auto voor ons","auto voor ons"],["Verloren band (0,25 m)","verloren band"]]};o=t("Auto voor ons",.7,"#f1f4f6",{key:!0,v:29}),a(o,40,0,0),o=t("Zwarte auto (5 %)",.05,"#16191c",{key:!0,v:33}),a(o,14,3.5,0),o=t("Auto achter ons",.5,"#b3262b",{key:!0,v:30.5}),a(o,-26,0,0),o=t("Vrachtwagen met oplegger",.45,"#d9dde0",{key:!0,v:24}),n(o,70,-3.5),o=t("Motorrijder",.3,"#2d2f33",{key:!0,v:36}),e(o,-45,3.5,2.1,.75,0,1.5,0,!1),o.models.push({k:"moto",cx:-45,cy:3.5}),o.hx=-45,o.hy=3.5;for(let[i,p,b,m]of[[120,11.95,"#8c97a3",-31],[260,8.45,"#2b5aa8",-34],[360,15.45,"#e6e9ec",-28]])o=t("Tegenliggers",.6,b,{key:!0,v:m}),o.tid=i,a(o,i,p,Math.PI,b);o=t("Verloren band (0,25 m)",.08,"#1d1f22",{key:!0}),s(o,130,.2,.36,0,.25,"tire"),o.hx=130,o.hy=.2,o=t("Pechauto op pechstrook",.6,"#c7a12b",{key:!0}),a(o,330,-6.6,.05),o=t("Persoon op pechstrook",.35,"#ff7a1a",{key:!0}),r(o,h.ped.x,h.ped.y),o=t("Vangrail (0,55\\u20130,8 m)",.6,"#c3c9ce",{key:!0}),f(o,-300,-8.8,1100,-8.8,.55,.8,.08),f(o,-300,18.2,1100,18.2,.55,.8,.08),o=t("Vangrailpalen",.4,"#8d959c");for(let i=-120;i<=1100;i+=4)e(o,i,-8.9,.1,.1,0,.8);o=t("Middenberm (New Jersey, 0,85 m)",.35,"#c5c3bc",{key:!0}),e(o,400,5.95,1400,.6,0,.85),o=t("Hectometerpaaltjes (retro)",2,"#f2f4f5",{key:!0});for(let i=-200;i<=1100;i+=100)e(o,i,-9.3,.12,.12,0,1);o=t("Portiek met borden",.5,"#8d959c",{key:!0}),e(o,240,-10,.5,.5,0,7.2),e(o,240,19,.5,.5,0,7.2),e(o,240,4.5,.6,29.5,6.5,7.1),o=t("Borden boven de weg (retro)",3,"#1f6fb8",{key:!0});for(let i of[-3.5,0,3.5])e(o,239.6,i,.12,3.3,5.3,6.9);o=t("Brug (onderkant 5,4 m)",.35,"#b0b4b3",{key:!0}),e(o,520,4.5,12,56,5.4,6.4);for(let i of[-11.5,5.95,20])e(o,520,i,1.2,1.2,0,5.4);return o=t("Geluidsmuur",.3,"#8b9a86"),f(o,-300,-14,1100,-14,0,4,.3),c},isMark(t,e){for(let s of[-1.75,1.75,10.2,13.7])if(Math.abs(e-s)<.08&&R(t,12)<3)return!0;for(let s of[-5.25,5.25,6.75,17.15])if(Math.abs(e-s)<.1)return!0;return!1},marks(t,e,s){for(let f of[-1.75,1.75,10.2,13.7])for(let a=s.x0;a<s.x1;a+=12)t.push([a+1.5,f,3,.16]);e.push([-5.25,.2],[5.25,.2],[6.75,.2],[17.15,.2])}};var K={label:"Erf en akker",build({O:t,box:e,cyl:s,wall:f,person:a}){let n,r={ground:"farm",lanes:[0],x0:-40,x1:90,roads:[[-3,3]],start:0,end:40,dust:{dx:10,dy:0,r:5},hud:[["Persoon (in het veld)","persoon"],["Hond (0,5 m)","hond"]]};n=t("Persoon (in het veld)",.35,"#e2557a",{key:!0}),a(n,h.ped.x,h.ped.y),n=t("Hond (0,5 m)",.3,"#c98a4b",{key:!0}),e(n,h.dog.x,h.dog.y,.75,.28,0,.5,.4,"dog"),n.hx=h.dog.x,n.hy=h.dog.y,n=t("Ma\\xEFsrijen (0,8 m)",.2,"#6b9a3a",{key:!0});for(let o=0;o<12;o++)e(n,25,5+o*.75,40,.25,0,.8);n=t("Persoon tussen gewas",.35,"#e2557a",{key:!0}),a(n,22,8.4),n=t("Ronde balen",.3,"#d9b45a",{key:!0});for(let[o,c]of[[14,-6],[16,-6],[15,-7.7]])s(n,o,c,.75,0,1.5);n=t("Draadafsluiting (1,0 m)",.5,"#b9c0c6",{key:!0,thin:.003}),f(n,-30,-12,80,-12,.98,1.01,.01),f(n,-30,-12,80,-12,.48,.51,.01),n=t("Afsluitpalen (\\xD8 10 cm)",.3,"#8a6a45",{key:!0});for(let o=-30;o<=80;o+=5)s(n,o,-12,.05,0,1.2);n=t("Tractor",.4,"#2f8a3d",{key:!0}),e(n,32,-4.5,3.2,1.9,.6,1.6),e(n,31.5,-4.5,1.6,1.4,1.6,2.9);for(let[o,c,i]of[[30.7,-3.6,.8],[30.7,-5.4,.8],[33.3,-3.7,.5],[33.3,-5.3,.5]])s(n,o,c,i*.35,0,i*2,"twheel");n=t("Schuur",.4,"#a94f3c"),e(n,0,16,20,10,0,7),n=t("Silo",.6,"#c9ced2"),s(n,-16,12,3,0,12),n=t("Graanwagen (vanaf 1,1 m)",.4,"#d07a2a",{key:!0}),e(n,48,-4,5,2.3,1.1,3);for(let o of[47,49])for(let c of[-3,-5])e(n,o,c,1,.35,0,1.1,0,"wheel");return r},isMark(){return!1},marks(){}};var xt={street:_,highway:$,farm:K},T=null;var O=[];function tt(t){T=t}function et(t,e){let s=xt[T.ground];return s&&s.isMark?s.isMark(t,e):!1}var k={preset:"vlp16",type:"rot",hfov:360,hres:.2,layers:16,vfov:30,vcenter:0,rmax:100,freq:10,mount:"roofM",mountH:1.85,err:{yaw:0,pitch:0,h:0,x:0},echo:"first",noise:.02,deskew:!0,color:"height",psize:1,beams:!0,live:!1},Vt=JSON.parse(JSON.stringify(k));var rt=[{x0:-4.66,x1:0,y0:-.92,y1:.92,z0:.25,z1:.97},{x0:-3.88,x1:-1.33,y0:-.76,y1:.76,z0:.97,z1:1.43}];var ot={front:{x:.06,label:"Grille / voorbumper"},roofF:{x:-1.7,label:"Dak, boven voorruit"},roofM:{x:-2.55,label:"Dak, midden"}};var nt={name:"grond",rho:.2};function st(t,e,s,f,a,n){for(let r of rt){let o=0,c=1e9;if(Math.abs(f)<1e-12){if(t<r.x0||t>r.x1)continue}else{let x=(r.x0-t)/f,l=(r.x1-t)/f;x>l&&([x,l]=[l,x]),o=Math.max(o,x),c=Math.min(c,l)}if(Math.abs(a)<1e-12){if(e<r.y0||e>r.y1)continue}else{let x=(r.y0-e)/a,l=(r.y1-e)/a;x>l&&([x,l]=[l,x]),o=Math.max(o,x),c=Math.min(c,l)}if(n<-1e-9&&(c=Math.min(c,-s/n)),c<=o)continue;let i=s+o*n,p=s+c*n,b=Math.min(i,p);if(Math.max(i,p)>=r.z0&&b<=r.z1)return!0}return!1}var z=new Float64Array(96),D=new Array(96),P=720,C=2*Math.PI,N=null;O.push(()=>{N=null});function Mt(t,e,s){let f=s.x2-s.x1,a=s.y2-s.y1,n=f*f+a*a,r=n>0?((t-s.x1)*f+(e-s.y1)*a)/n:0;return r=Math.max(0,Math.min(1,r)),Math.hypot(s.x1+r*f-t,s.y1+r*a-e)}function at(t,e,s,f){let a=new Array(P);for(let n=0;n<P;n++)a[n]=[];for(let n of T.prims){let r,o,c;if(n.k===0){if(c=Mt(t,e,n),c>f)continue;let m=Math.atan2(n.y1-e,n.x1-t),x=Math.atan2(n.y2-e,n.x2-t),l=R(x-m+Math.PI,C)-Math.PI;r=l>=0?m:x,o=Math.abs(l)}else{let m=n.cx-t,x=n.cy-e,l=Math.hypot(m,x);if(c=Math.max(0,l-n.r),c>f)continue;let d=l>n.r+1e-6?Math.asin(n.r/l):Math.PI;r=Math.atan2(x,m)-d,o=2*d}let i=c>.001?Math.atan((s+.25)/c):Math.PI;if(r-=i,o+=2*i,o>=C){for(let m=0;m<P;m++)a[m].push(n);continue}let p=Math.floor(R(r+Math.PI,C)/C*P),b=Math.ceil(o/C*P)+1;for(let m=0;m<b;m++)a[(p+m)%P].push(n)}N=a}function gt(t,e,s,f){let a=T.dustC,n=t-a.cx,r=e-a.cy,o=n*s+r*f,c=n*n+r*r-a.r*a.r,i=o*o-c;if(i<0)return null;let p=Math.sqrt(i),b=Math.max(-o-p,0),m=-o+p;return m>b?[b,m]:null}function kt(t,e,s,f,a,n){let r=Math.cos(a),o=Math.sin(a),c=Math.tan(n),i=Math.cos(n),p=0,b=N?N[Math.floor(R(a+Math.PI,C)/C*P)%P]:T.prims;for(let u of b){let M;if(u.k===0){let y=u.x2-u.x1,g=u.y2-u.y1,S=r*g-o*y;if(S>-1e-12&&S<1e-12)continue;let A=u.x1-e,B=u.y1-s;if(M=(A*g-B*y)/S,M<.05)continue;let q=(A*o-B*r)/S;if(q<0||q>1)continue}else{let y=e-u.cx,g=s-u.cy,S=y*r+g*o,A=y*y+g*g-u.r*u.r,B=S*S-A;if(B<0||(M=-S-Math.sqrt(B),M<.05))continue}let v=f+M*c;if(!(v<u.z0||v>u.z1)&&(z[p]=M,D[p]=u.o,p++,p>92))break}c<-1e-6&&(z[p]=-f/c,D[p]=nt,p++);for(let u=1;u<p;u++){let M=z[u],v=D[u],y=u-1;for(;y>=0&&z[y]>M;)z[y+1]=z[y],D[y+1]=D[y],y--;z[y+1]=M,D[y+1]=v}let m=1,x=-1,l=null,d=!1;for(let u=0;u<p;u++){let M=D[u];if(M.glass){if(t()<.85){m*=.8;continue}d=!0}x=z[u],l=M;break}return{dx:r,dy:o,cE:i,hT:x,hO:l,trans:m,glassHit:d}}var bt=()=>h.fog*.06+h.rain*.012,V=()=>.1/(k.rmax*k.rmax);function ft(t,e,s,f,a,n){let r=kt(t,e,s,f,a,n),o=bt(),c=V(),i=[],p=h.dust?gt(e,s,r.dx,r.dy):null,b=h.dustD*.12;if(r.hO){let d=r.hT/r.cE,u=r.hO.rho,M=1;if(r.hO===nt){M=0;let g=Math.abs(Math.sin(n));et(e+r.hT*r.dx,s+r.hT*r.dy)?(M=7,u=(h.wet?.25:.6)*Math.sqrt(g)):u=(h.wet?.02:T.ground==="farm"?.15:.2)*g}r.glassHit&&(u=.08,M=2),r.hO.thin&&(u*=Math.min(1,r.hO.thin/(.003*d+.008)));let v=1;if(p){let g=Math.max(0,Math.min(p[1],r.hT)-p[0]);v=Math.exp(-2*b*g/r.cE)}let y=u*r.trans*Math.exp(-2*o*d)*v/(d*d);y>=c&&d>=.3&&i.push({R:d,sig:y,src:M,o:r.hO})}let m=i.length?i[0].R:1e9,x=(d,u,M,v,y)=>{if(d<=0)return;let g=v-Math.log(1-t())/d;if(g>=y||g>=m||g<.3)return;let S=u*Math.exp(-2*o*g)/(g*g);S>=c&&i.push({R:g,sig:S,src:M,o:null})};if(h.rain>0&&x(h.rain*.012,.0015,3,0,1e9),h.fog>0&&x(h.fog*.03,.002,4,0,1e9),p&&x(h.dustD*.5,.006,5,p[0]/r.cE,p[1]/r.cE),h.interf&&t()<.004&&i.push({R:1+t()*Math.min(k.rmax*.6,40),sig:c*3,src:6,o:null}),!i.length)return null;let l=i[0];if(k.echo==="first")for(let d of i)d.R<l.R&&(l=d);else if(k.echo==="last")for(let d of i)d.R>l.R&&(l=d);else for(let d of i)d.sig>l.sig&&(l=d);return l}var it=()=>ot[k.mount].x;function ct(t){return{pos:new Float32Array(t*3),Z:new Float32Array(t),SG:new Float32Array(t),LY:new Uint8Array(t),SRC:new Uint8Array(t),OID:new Int16Array(t),BL:new Uint8Array(t)}}var ut=t=>[t.pos.buffer,t.Z.buffer,t.SG.buffer,t.LY.buffer,t.SRC.buffer,t.OID.buffer,t.BL.buffer];function lt(t,e){let s=t.nL,f=t.els,a=k.mountH,n=it(),r=k.err.yaw*E,o=k.err.pitch*E,c=V(),i=Math.cos(t.ayaw),p=Math.sin(t.ayaw),b=Math.cos(t.qyaw),m=Math.sin(t.qyaw),x=k.type==="rot",l=e.pos;for(let d=t.i0;d<=t.i1;d++){let u=Y((t.seed^Math.imul(d+1,2654435761))>>>0),M=t.az0+(d+.5)*t.step,v=M*E,y=v+r,g=Math.cos(y),S=Math.sin(y),A=Math.cos(v),B=Math.sin(v),q=t.v&&x?t.v*R(M+180,360)/360/k.freq:0,ht=t.ax+q,dt=ht+n*i,pt=t.ay+n*p,mt=t.qx+(t.shiftQ?q:0),yt=t.qy;for(let I=0;I<s;I++){let w=(d-t.i0)*s+I,G=f[I]+o*A,F=!1;if(e.BL[w]=0,st(n,0,a,g,S,Math.tan(G)))e.BL[w]=1;else{let L=ft(u,dt,pt,a,y+t.ayaw,G);if(L){let H=L.R+(k.noise>0?Q(u)*k.noise:0);if(H>=.3){let j=f[I],U=H*Math.cos(j),J=a+k.err.h+H*Math.sin(j),Z=n+k.err.x+U*A,X=U*B;l[w*3]=mt+Z*b-X*m,l[w*3+1]=J,l[w*3+2]=-(yt+Z*m+X*b),e.Z[w]=J,e.SG[w]=Math.log10(Math.max(L.sig/c,1)),e.LY[w]=I,e.SRC[w]=L.src,e.OID[w]=L.o&&L.o.idx!==void 0?L.o.idx:-1,F=!0}}}F||(l[w*3]=0,l[w*3+1]=-1e5,l[w*3+2]=0,e.OID[w]=-2)}}}function wt(t){let e=[];for(let a of t.objs)e[a.idx]=a;let s=t.prims,f=[];for(let a=0;a<s.length;a+=8){let n=e[s[a+1]];s[a]===0?f.push({k:0,o:n,x1:s[a+2],y1:s[a+3],x2:s[a+4],y2:s[a+5],z0:s[a+6],z1:s[a+7]}):f.push({k:1,o:n,cx:s[a+2],cy:s[a+3],r:s[a+4],z0:s[a+6],z1:s[a+7]})}return{ground:t.ground,dustC:t.dustC,objs:e,prims:f}}var W=null;self.onmessage=t=>{let e=t.data,s=performance.now();Object.assign(h,e.S),Object.assign(k,e.L),e.world.prims&&(W=wt(e.world)),W.dustC=e.world.dustC,tt(W),e.bin&&at(e.bin.ox,e.bin.oy,e.bin.margin,e.bin.rc);let f=(e.job.i1-e.job.i0+1)*e.job.nL,a=ct(f);lt(e.job,a),self.postMessage({job:e.job,out:a,ms:performance.now()-s},ut(a))};})();\n';
+var virtual_lidar_worker_default = '(()=>{var h={world:"street",rain:0,fog:0,dust:!1,dustD:.6,wet:!1,interf:!1,speed:8,objects:"full",ped:{x:12,y:1.2},dog:{x:7,y:-1.8},vx:0,vy:0};var vt=JSON.parse(JSON.stringify(h));var q=Math.PI/180;function Y(t){return function(){t|=0,t=t+1831565813|0;let e=Math.imul(t^t>>>15,1|t);return e=e+Math.imul(e^e>>>7,61|e)^e,((e^e>>>14)>>>0)/4294967296}}var R=(t,e)=>(t%e+e)%e;function Q(t){return Math.sqrt(-2*Math.log(1-t()))*Math.cos(2*Math.PI*t())}var _={label:"Straat",build({O:t,box:e,cyl:s,wall:f,car:a,person:n}){let r,o={ground:"street",lanes:[0,3.5],x0:-60,x1:110,roads:[[-5.75,7.75]],start:0,end:46,dust:{dx:10,dy:-.5,r:4.5},hud:[["Voetganger","voetganger"],["Hond (0,5 m)","hond"]]};r=t("Voetganger",.35,"#e2557a",{key:!0}),n(r,h.ped.x,h.ped.y),r=t("Hond (0,5 m)",.3,"#c98a4b",{key:!0}),e(r,h.dog.x,h.dog.y,.75,.28,0,.5,.4,"dog"),r.hx=h.dog.x,r.hy=h.dog.y,r=t("Witte auto",.7,"#f1f4f6",{key:!0}),a(r,16,-3.6,0),r=t("Zwarte auto (5 %)",.05,"#16191c",{key:!0}),a(r,25,4.6,Math.PI),r=t("Vrachtwagen-laadbak (vanaf 1,0 m)",.45,"#3d7cc9",{key:!0}),e(r,38,-3.4,6.5,2.4,1,3.6),r=t("Vrachtwagen-cabine en wielen",.45,"#2f5e98"),e(r,42.4,-3.4,2.2,2.4,.4,3.2);for(let c of[37.5,40.8])for(let i of[-2.4,-4.4])e(r,c,i,1,.3,0,1,0,"wheel");r=t("Slagboom (0,9\\u20131,0 m)",.6,"#e04848",{key:!0}),e(r,52,-.6,.1,7.6,.9,1),r=t("Slagboompaal",.5,"#cfd5da"),e(r,52,-4.8,.3,.3,0,1.1),r=t("Stoeprand (15 cm)",.25,"#9aa3ab",{key:!0}),f(r,-60,-5.9,110,-5.9,0,.15,.25),f(r,-60,7.9,110,7.9,0,.15,.25),r=t("Palen (\\xD8 12 cm)",.5,"#7fb03c",{key:!0});for(let c=-36;c<=100;c+=8)s(r,c+2,-7.2,.06,0,3.5);return r=t("Verkeersbord (retroreflecterend)",3,"#2a8fd6",{key:!0}),e(r,20,-7.6,.05,.8,1.7,2.4),r=t("Paal verkeersbord",.5,"#9aa3ab"),s(r,20,-7.6,.04,0,1.7),r=t("Glaswand bushokje",.08,"#8fc4ff",{glass:!0,key:!0}),f(r,22,9.4,29,9.4,0,2.5,.04),r=t("Bushokje (dak en zijkant)",.4,"#7b8794"),e(r,25.5,10.4,7.2,2.2,2.5,2.65),f(r,22,9.4,22,11.4,0,2.5,.08),r=t("Persoon achter glas",.35,"#e2557a",{key:!0}),n(r,25.5,10.6),r=t("Haag",.15,"#4f9a52",{key:!0}),e(r,-10,-10,8,1.4,0,1.3),r=t("Gebouw",.4,"#a7b0b8"),e(r,46,19,18,8,0,9),e(r,-26,16,14,8,0,7),e(r,8,17,12,7,0,6),r=t("Muur",.5,"#a7b0b8"),f(r,-60,-15,110,-15,0,2.5,.3),o},isMark(t,e){return Math.abs(e-1)<.07&&R(t,6)<3||Math.abs(e+5.45)<.07||Math.abs(e-7.45)<.07||t>30&&t<34&&e>-5.6&&e<7.6&&R(e+5.6,1)<.5},marks(t,e,s){for(let f=s.x0;f<s.x1;f+=6)t.push([f+1.5,1,3,.14]);e.push([-5.45,.14],[7.45,.14]);for(let f=-5.6;f<7.6;f+=1)t.push([32,f+.25,4,.5])}};var $={label:"Snelweg",build({O:t,box:e,cyl:s,wall:f,car:a,truck:n,person:r}){let o,c={ground:"highway",lanes:[-3.5,0,3.5],x0:-300,x1:1100,roads:[[-8.2,5.6],[6.3,17.6]],start:0,end:860,dust:{dx:12,dy:0,r:5},hud:[["Auto voor ons","auto voor ons"],["Verloren band (0,25 m)","verloren band"]]};o=t("Auto voor ons",.7,"#f1f4f6",{key:!0,v:29}),a(o,40,0,0),o=t("Zwarte auto (5 %)",.05,"#16191c",{key:!0,v:33}),a(o,14,3.5,0),o=t("Auto achter ons",.5,"#b3262b",{key:!0,v:30.5}),a(o,-26,0,0),o=t("Vrachtwagen met oplegger",.45,"#d9dde0",{key:!0,v:24}),n(o,70,-3.5),o=t("Motorrijder",.3,"#2d2f33",{key:!0,v:36}),e(o,-45,3.5,2.1,.75,0,1.5,0,!1),o.models.push({k:"moto",cx:-45,cy:3.5}),o.hx=-45,o.hy=3.5;for(let[i,m,b,p]of[[120,11.95,"#8c97a3",-31],[260,8.45,"#2b5aa8",-34],[360,15.45,"#e6e9ec",-28]])o=t("Tegenliggers",.6,b,{key:!0,v:p}),o.tid=i,a(o,i,m,Math.PI,b);o=t("Verloren band (0,25 m)",.08,"#1d1f22",{key:!0}),s(o,130,.2,.36,0,.25,"tire"),o.hx=130,o.hy=.2,o=t("Pechauto op pechstrook",.6,"#c7a12b",{key:!0}),a(o,330,-6.6,.05),o=t("Persoon op pechstrook",.35,"#ff7a1a",{key:!0}),r(o,h.ped.x,h.ped.y),o=t("Vangrail (0,55\\u20130,8 m)",.6,"#c3c9ce",{key:!0}),f(o,-300,-8.8,1100,-8.8,.55,.8,.08),f(o,-300,18.2,1100,18.2,.55,.8,.08),o=t("Vangrailpalen",.4,"#8d959c");for(let i=-120;i<=1100;i+=4)e(o,i,-8.9,.1,.1,0,.8);o=t("Middenberm (New Jersey, 0,85 m)",.35,"#c5c3bc",{key:!0}),e(o,400,5.95,1400,.6,0,.85),o=t("Hectometerpaaltjes (retro)",2,"#f2f4f5",{key:!0});for(let i=-200;i<=1100;i+=100)e(o,i,-9.3,.12,.12,0,1);o=t("Portiek met borden",.5,"#8d959c",{key:!0}),e(o,240,-10,.5,.5,0,7.2),e(o,240,19,.5,.5,0,7.2),e(o,240,4.5,.6,29.5,6.5,7.1),o=t("Borden boven de weg (retro)",3,"#1f6fb8",{key:!0});for(let i of[-3.5,0,3.5])e(o,239.6,i,.12,3.3,5.3,6.9);o=t("Brug (onderkant 5,4 m)",.35,"#b0b4b3",{key:!0}),e(o,520,4.5,12,56,5.4,6.4);for(let i of[-11.5,5.95,20])e(o,520,i,1.2,1.2,0,5.4);return o=t("Geluidsmuur",.3,"#8b9a86"),f(o,-300,-14,1100,-14,0,4,.3),c},isMark(t,e){for(let s of[-1.75,1.75,10.2,13.7])if(Math.abs(e-s)<.08&&R(t,12)<3)return!0;for(let s of[-5.25,5.25,6.75,17.15])if(Math.abs(e-s)<.1)return!0;return!1},marks(t,e,s){for(let f of[-1.75,1.75,10.2,13.7])for(let a=s.x0;a<s.x1;a+=12)t.push([a+1.5,f,3,.16]);e.push([-5.25,.2],[5.25,.2],[6.75,.2],[17.15,.2])}};var K={label:"Erf en akker",build({O:t,box:e,cyl:s,wall:f,person:a}){let n,r={ground:"farm",lanes:[0],x0:-40,x1:90,roads:[[-3,3]],start:0,end:40,dust:{dx:10,dy:0,r:5},hud:[["Persoon (in het veld)","persoon"],["Hond (0,5 m)","hond"]]};n=t("Persoon (in het veld)",.35,"#e2557a",{key:!0}),a(n,h.ped.x,h.ped.y),n=t("Hond (0,5 m)",.3,"#c98a4b",{key:!0}),e(n,h.dog.x,h.dog.y,.75,.28,0,.5,.4,"dog"),n.hx=h.dog.x,n.hy=h.dog.y,n=t("Ma\\xEFsrijen (0,8 m)",.2,"#6b9a3a",{key:!0});for(let o=0;o<12;o++)e(n,25,5+o*.75,40,.25,0,.8);n=t("Persoon tussen gewas",.35,"#e2557a",{key:!0}),a(n,22,8.4),n=t("Ronde balen",.3,"#d9b45a",{key:!0});for(let[o,c]of[[14,-6],[16,-6],[15,-7.7]])s(n,o,c,.75,0,1.5);n=t("Draadafsluiting (1,0 m)",.5,"#b9c0c6",{key:!0,thin:.003}),f(n,-30,-12,80,-12,.98,1.01,.01),f(n,-30,-12,80,-12,.48,.51,.01),n=t("Afsluitpalen (\\xD8 10 cm)",.3,"#8a6a45",{key:!0});for(let o=-30;o<=80;o+=5)s(n,o,-12,.05,0,1.2);n=t("Tractor",.4,"#2f8a3d",{key:!0}),e(n,32,-4.5,3.2,1.9,.6,1.6),e(n,31.5,-4.5,1.6,1.4,1.6,2.9);for(let[o,c,i]of[[30.7,-3.6,.8],[30.7,-5.4,.8],[33.3,-3.7,.5],[33.3,-5.3,.5]])s(n,o,c,i*.35,0,i*2,"twheel");n=t("Schuur",.4,"#a94f3c"),e(n,0,16,20,10,0,7),n=t("Silo",.6,"#c9ced2"),s(n,-16,12,3,0,12),n=t("Graanwagen (vanaf 1,1 m)",.4,"#d07a2a",{key:!0}),e(n,48,-4,5,2.3,1.1,3);for(let o of[47,49])for(let c of[-3,-5])e(n,o,c,1,.35,0,1.1,0,"wheel");return r},isMark(){return!1},marks(){}};var xt={street:_,highway:$,farm:K},T=null;var O=[];function tt(t){T=t}function et(t,e){let s=xt[T.ground];return s&&s.isMark?s.isMark(t,e):!1}var k={preset:"vlp16",type:"rot",hfov:360,hres:.2,layers:16,vfov:30,vcenter:0,rmax:100,freq:10,mount:"roofM",mountH:1.85,err:{yaw:0,pitch:0,h:0,x:0},echo:"first",noise:.02,deskew:!0,color:"height",psize:1,beams:!0,live:!1},Vt=JSON.parse(JSON.stringify(k));var rt=[{x0:-4.66,x1:0,y0:-.92,y1:.92,z0:.25,z1:.97},{x0:-3.88,x1:-1.33,y0:-.76,y1:.76,z0:.97,z1:1.43}];var ot={front:{x:.06,label:"Grille / voorbumper"},roofF:{x:-1.7,label:"Dak, boven voorruit"},roofM:{x:-2.55,label:"Dak, midden"}};var nt={name:"grond",rho:.2};function st(t,e,s,f,a,n){for(let r of rt){let o=0,c=1e9;if(Math.abs(f)<1e-12){if(t<r.x0||t>r.x1)continue}else{let x=(r.x0-t)/f,l=(r.x1-t)/f;x>l&&([x,l]=[l,x]),o=Math.max(o,x),c=Math.min(c,l)}if(Math.abs(a)<1e-12){if(e<r.y0||e>r.y1)continue}else{let x=(r.y0-e)/a,l=(r.y1-e)/a;x>l&&([x,l]=[l,x]),o=Math.max(o,x),c=Math.min(c,l)}if(n<-1e-9&&(c=Math.min(c,-s/n)),c<=o)continue;let i=s+o*n,m=s+c*n,b=Math.min(i,m);if(Math.max(i,m)>=r.z0&&b<=r.z1)return!0}return!1}var z=new Float64Array(96),D=new Array(96),P=720,C=2*Math.PI,N=null;O.push(()=>{N=null});function Mt(t,e,s){let f=s.x2-s.x1,a=s.y2-s.y1,n=f*f+a*a,r=n>0?((t-s.x1)*f+(e-s.y1)*a)/n:0;return r=Math.max(0,Math.min(1,r)),Math.hypot(s.x1+r*f-t,s.y1+r*a-e)}function at(t,e,s,f){let a=new Array(P);for(let n=0;n<P;n++)a[n]=[];for(let n of T.prims){let r,o,c;if(n.k===0){if(c=Mt(t,e,n),c>f)continue;let p=Math.atan2(n.y1-e,n.x1-t),x=Math.atan2(n.y2-e,n.x2-t),l=R(x-p+Math.PI,C)-Math.PI;r=l>=0?p:x,o=Math.abs(l)}else{let p=n.cx-t,x=n.cy-e,l=Math.hypot(p,x);if(c=Math.max(0,l-n.r),c>f)continue;let d=l>n.r+1e-6?Math.asin(n.r/l):Math.PI;r=Math.atan2(x,p)-d,o=2*d}let i=c>.001?Math.atan((s+.25)/c):Math.PI;if(r-=i,o+=2*i,o>=C){for(let p=0;p<P;p++)a[p].push(n);continue}let m=Math.floor(R(r+Math.PI,C)/C*P),b=Math.ceil(o/C*P)+1;for(let p=0;p<b;p++)a[(m+p)%P].push(n)}N=a}function gt(t,e,s,f){let a=T.dustC,n=t-a.cx,r=e-a.cy,o=n*s+r*f,c=n*n+r*r-a.r*a.r,i=o*o-c;if(i<0)return null;let m=Math.sqrt(i),b=Math.max(-o-m,0),p=-o+m;return p>b?[b,p]:null}function kt(t,e,s,f,a,n){let r=Math.cos(a),o=Math.sin(a),c=Math.tan(n),i=Math.cos(n),m=0,b=N?N[Math.floor(R(a+Math.PI,C)/C*P)%P]:T.prims;for(let u of b){let M;if(u.k===0){let y=u.x2-u.x1,g=u.y2-u.y1,S=r*g-o*y;if(S>-1e-12&&S<1e-12)continue;let A=u.x1-e,B=u.y1-s;if(M=(A*g-B*y)/S,M<.05)continue;let E=(A*o-B*r)/S;if(E<0||E>1)continue}else{let y=e-u.cx,g=s-u.cy,S=y*r+g*o,A=y*y+g*g-u.r*u.r,B=S*S-A;if(B<0||(M=-S-Math.sqrt(B),M<.05))continue}let v=f+M*c;if(!(v<u.z0||v>u.z1)&&(z[m]=M,D[m]=u.o,m++,m>92))break}c<-1e-6&&(z[m]=-f/c,D[m]=nt,m++);for(let u=1;u<m;u++){let M=z[u],v=D[u],y=u-1;for(;y>=0&&z[y]>M;)z[y+1]=z[y],D[y+1]=D[y],y--;z[y+1]=M,D[y+1]=v}let p=1,x=-1,l=null,d=!1;for(let u=0;u<m;u++){let M=D[u];if(M.glass){if(t()<.85){p*=.8;continue}d=!0}x=z[u],l=M;break}return{dx:r,dy:o,cE:i,hT:x,hO:l,trans:p,glassHit:d}}var bt=()=>h.fog*.06+h.rain*.012,V=()=>.1/(k.rmax*k.rmax);function ft(t,e,s,f,a,n){let r=kt(t,e,s,f,a,n),o=bt(),c=V(),i=[],m=h.dust?gt(e,s,r.dx,r.dy):null,b=h.dustD*.12;if(r.hO){let d=r.hT/r.cE,u=r.hO.rho,M=1;if(r.hO===nt){M=0;let g=Math.abs(Math.sin(n));et(e+r.hT*r.dx,s+r.hT*r.dy)?(M=7,u=(h.wet?.25:.6)*Math.sqrt(g)):u=(h.wet?.02:T.ground==="farm"?.15:.2)*g}r.glassHit&&(u=.08,M=2),r.hO.thin&&(u*=Math.min(1,r.hO.thin/(.003*d+.008)));let v=1;if(m){let g=Math.max(0,Math.min(m[1],r.hT)-m[0]);v=Math.exp(-2*b*g/r.cE)}let y=u*r.trans*Math.exp(-2*o*d)*v/(d*d);y>=c&&d>=.3&&i.push({R:d,sig:y,src:M,o:r.hO})}let p=i.length?i[0].R:1e9,x=(d,u,M,v,y)=>{if(d<=0)return;let g=v-Math.log(1-t())/d;if(g>=y||g>=p||g<.3)return;let S=u*Math.exp(-2*o*g)/(g*g);S>=c&&i.push({R:g,sig:S,src:M,o:null})};if(h.rain>0&&x(h.rain*.012,.0015,3,0,1e9),h.fog>0&&x(h.fog*.03,.002,4,0,1e9),m&&x(h.dustD*.5,.006,5,m[0]/r.cE,m[1]/r.cE),h.interf&&t()<.004&&i.push({R:1+t()*Math.min(k.rmax*.6,40),sig:c*3,src:6,o:null}),!i.length)return null;let l=i[0];if(k.echo==="first")for(let d of i)d.R<l.R&&(l=d);else if(k.echo==="last")for(let d of i)d.R>l.R&&(l=d);else for(let d of i)d.sig>l.sig&&(l=d);return l}var it=()=>ot[k.mount].x;function ct(t){return{pos:new Float32Array(t*3),Z:new Float32Array(t),SG:new Float32Array(t),LY:new Uint8Array(t),SRC:new Uint8Array(t),OID:new Int16Array(t),BL:new Uint8Array(t)}}var ut=t=>[t.pos.buffer,t.Z.buffer,t.SG.buffer,t.LY.buffer,t.SRC.buffer,t.OID.buffer,t.BL.buffer];function lt(t,e){let s=t.nL,f=t.els,a=k.mountH,n=it(),r=k.err.yaw*q,o=k.err.pitch*q,c=V(),i=Math.cos(t.ayaw),m=Math.sin(t.ayaw),b=Math.cos(t.qyaw),p=Math.sin(t.qyaw),x=k.type==="rot",l=e.pos;for(let d=t.i0;d<=t.i1;d++){let u=Y((t.seed^Math.imul(d+1,2654435761))>>>0),M=t.az0+(d+.5)*t.step,v=M*q,y=v+r,g=Math.cos(y),S=Math.sin(y),A=Math.cos(v),B=Math.sin(v),E=t.v&&x?t.v*R(M+180,360)/360/k.freq:0,ht=t.ax+E,dt=ht+n*i,mt=t.ay+n*m,pt=t.qx+(t.shiftQ?E:0),yt=t.qy;for(let I=0;I<s;I++){let w=(d-t.i0)*s+I,G=f[I]+o*A,F=!1;if(e.BL[w]=0,st(n,0,a,g,S,Math.tan(G)))e.BL[w]=1;else{let L=ft(u,dt,mt,a,y+t.ayaw,G);if(L){let H=L.R+(k.noise>0?Q(u)*k.noise:0);if(H>=.3){let j=f[I],U=H*Math.cos(j),J=a+k.err.h+H*Math.sin(j),Z=n+k.err.x+U*A,X=U*B;l[w*3]=pt+Z*b-X*p,l[w*3+1]=J,l[w*3+2]=-(yt+Z*p+X*b),e.Z[w]=J,e.SG[w]=Math.log10(Math.max(L.sig/c,1)),e.LY[w]=I,e.SRC[w]=L.src,e.OID[w]=L.o&&L.o.idx!==void 0?L.o.idx:-1,F=!0}}}F||(l[w*3]=0,l[w*3+1]=-1e5,l[w*3+2]=0,e.OID[w]=-2)}}}function wt(t){let e=[];for(let a of t.objs)e[a.idx]=a;let s=t.prims,f=[];for(let a=0;a<s.length;a+=8){let n=e[s[a+1]];s[a]===0?f.push({k:0,o:n,x1:s[a+2],y1:s[a+3],x2:s[a+4],y2:s[a+5],z0:s[a+6],z1:s[a+7]}):f.push({k:1,o:n,cx:s[a+2],cy:s[a+3],r:s[a+4],z0:s[a+6],z1:s[a+7]})}return{ground:t.ground,dustC:t.dustC,objs:e,prims:f}}var W=null;self.onmessage=t=>{let e=t.data,s=performance.now();Object.assign(h,e.S),Object.assign(k,e.L),e.world.prims&&(W=wt(e.world)),W.dustC=e.world.dustC,tt(W),e.bin&&at(e.bin.ox,e.bin.oy,e.bin.margin,e.bin.rc);let f=(e.job.i1-e.job.i0+1)*e.job.nL,a=ct(f);lt(e.job,a),self.postMessage({job:e.job,out:a,ms:performance.now()-s},ut(a))};})();\n';
 
 // src/sensors/lidar/scan.js
 var PB = null;
@@ -2012,8 +2012,660 @@ var lidar_default = {
   debugColMs: () => debugColMs()
 };
 
+// src/sensors/radar/state.js
+var R = {
+  preset: "mrr",
+  hfov: 90,
+  angRes: 5,
+  rangeRes: 0.3,
+  vRes: 0.15,
+  rmax: 80,
+  vfov: 14,
+  freq: 20,
+  mount: "front",
+  mountH: 0.5,
+  dirt: 0,
+  statFilter: false,
+  multipath: true,
+  color: "vr",
+  show3d: true,
+  vectors: true
+};
+var RBASE = JSON.parse(JSON.stringify(R));
+
+// src/sensors/radar/presets.js
+var PRESETS2 = {
+  lrr: { hfov: 20, angRes: 2, rangeRes: 0.5, vRes: 0.1, rmax: 200, vfov: 8, freq: 20, mount: "front", mountH: 0.5 },
+  mrr: { hfov: 90, angRes: 5, rangeRes: 0.3, vRes: 0.15, rmax: 80, vfov: 14, freq: 20, mount: "front", mountH: 0.5 },
+  srr: { hfov: 150, angRes: 10, rangeRes: 0.15, vRes: 0.2, rmax: 40, vfov: 20, freq: 20, mount: "cornerL", mountH: 0.55 },
+  img: { hfov: 100, angRes: 1, rangeRes: 0.2, vRes: 0.1, rmax: 150, vfov: 15, freq: 15, mount: "front", mountH: 0.5 }
+};
+var SENSORKEYS2 = ["hfov", "angRes", "rangeRes", "vRes", "rmax", "vfov", "freq", "mount", "mountH"];
+var MOUNTS2 = { front: { x: 0.08, y: 0, yaw: 0, label: "Voorbumper, midden" }, cornerL: { x: -0.35, y: 0.82, yaw: 45, label: "Hoek linksvoor (45\xB0)" }, cornerR: { x: -0.35, y: -0.82, yaw: -45, label: "Hoek rechtsvoor (\u221245\xB0)" } };
+
+// src/sensors/radar/controls.js
+var controls_default2 = [
+  { g: "Radar", items: [
+    { k: "preset", t: "sel", label: "Voorbeeld", opts: [["lrr", "Lange afstand (ACC), \xB110\xB0"], ["mrr", "Middellange afstand, \xB145\xB0"], ["srr", "Hoekradar, \xB175\xB0"], ["img", "4D-beeldradar, \xB150\xB0"], ["custom", "\u2014 eigen instelling \u2014"]] },
+    { k: "hfov", label: "Horizontale FOV", min: 10, max: 160, step: 5, u: "\xB0", d: 0 },
+    { k: "angRes", label: "Hoekresolutie", min: 1, max: 12, step: 0.5, u: "\xB0", d: 1 },
+    { k: "rangeRes", label: "Afstandsresolutie", min: 0.1, max: 1.5, step: 0.05, u: " m", d: 2 },
+    { k: "vRes", label: "Snelheidsresolutie (Doppler)", min: 0.05, max: 1, step: 0.05, u: " m/s", d: 2 },
+    { k: "rmax", label: "Bereik voor een auto (10 m\xB2)", min: 20, max: 250, step: 5, u: " m", d: 0 },
+    { k: "vfov", label: "Verticale bundel", min: 4, max: 30, step: 1, u: "\xB0", d: 0 },
+    { k: "freq", label: "Meetfrequentie", min: 5, max: 30, step: 1, u: " Hz", d: 0 }
+  ] },
+  { g: "Montage", items: [
+    { k: "mount", t: "sel", label: "Plaats", opts: Object.entries(MOUNTS2).map(([k, m]) => [k, m.label]) },
+    { k: "mountH", label: "Montagehoogte", min: 0.3, max: 1, step: 0.05, u: " m", d: 2 },
+    { k: "dirt", label: "Vuile radarkap (modder, sneeuw)", min: 0, max: 1, step: 0.05, fmt: (v) => v == 0 ? "proper" : "\u2212" + String(Math.round(v * 15)) + " dB" }
+  ] },
+  { g: "Verwerking", items: [
+    { k: "statFilter", t: "chk", label: "Stilstaande doelen wegfilteren (zoals ACC)" },
+    { k: "multipath", t: "chk", label: "Weerkaatsing via vangrail en muren (multipath)" }
+  ] },
+  { g: "Weergave radar", items: [
+    { k: "color", t: "sel", label: "Kleur detecties", opts: [["vr", "Radiale snelheid (Doppler)"], ["stat", "Bewegend / stilstaand"], ["snr", "Signaalsterkte (SNR)"], ["source", "Werkelijke oorzaak"]] },
+    { k: "vectors", t: "chk", label: "Snelheidsvectoren tonen (bewegende doelen)" },
+    { k: "show3d", t: "chk", label: "Bundel en detecties in de 3D-wereld" }
+  ] }
+];
+
+// src/sensors/radar/experiments.js
+var EXPS2 = [
+  {
+    t: "Radar ziet door stof en mist",
+    set: { world: "farm", dust: true, dustD: 0.8, fog: 0.8, ped: { x: 12, y: 0.5 }, layout: ["world", "lidar", "radar"], lidar: { preset: "vlp16", color: "source" }, radar: { preset: "mrr", color: "source" } },
+    u: "Radar werkt met een golflengte van 4 mm (77 GHz), lidar met licht van ongeveer 0,001 mm. Stofdeeltjes en mistdruppels zijn veel kleiner dan 4 mm: voor radar zijn ze bijna onzichtbaar, voor lidar niet. Je ziet drie vensters: de 3D-wereld, de lidar-puntenwolk en het radarbeeld.",
+    q: "Hoeveel lidarpunten krijgt de persoon in de stofwolk (tabblad <b>Meting</b> \u2192 Lidar)? Hoeveel radardetecties (Meting \u2192 Radar)? Wat ziet de lidar in plaats van de persoon?",
+    a: 'Lidar: slechts enkele punten ("zwak"). Stof en mist vormen een wolk van punten v\xF3\xF3r de wagen, want de eerste echo komt van de deeltjes. Radar: de persoon geeft \xE9\xE9n duidelijke detectie (\xB120 dB); stof en mist geven geen enkele detectie. De radar toont wel geen vorm: \xE9\xE9n stip, geen persoon. Daarom combineert een voertuig beide sensoren (sensorfusie).'
+  },
+  {
+    t: "RCS: metaal telt, kleur niet",
+    set: { layout: ["world", "radar"], lidar: { preset: "vlp16" }, radar: { preset: "mrr" } },
+    u: 'Het ontvangen radarsignaal is evenredig met de radardoorsnede \u03C3 (RCS, in m\xB2) gedeeld door <span class="f">R\u2074</span>. Het bereik groeit dus met de vierdemachtswortel van \u03C3. Een auto heeft ongeveer 10 m\xB2, een voetganger 0,5 m\xB2, een vrachtwagen 100 m\xB2. Metaal kaatst sterk terug; de kleur speelt voor radar geen rol.',
+    q: "Lees in <b>Meting</b> \u2192 Radar het bereik voor een voetganger en voor een auto. Hoeveel keer kleiner is de RCS, en hoeveel keer korter het bereik? Verplaats de voetganger met <b>Persoon plaatsen</b> naar ongeveer 35 m en daarna 45 m voor de wagen: ziet de radar hem nog? Wordt de zwarte auto slechter gezien dan de witte?",
+    a: "Voetganger \xB138 m, auto 80 m. Een 20 keer kleinere RCS geeft maar 20<sup>\xBC</sup> \u2248 2,1 keer korter bereik. Op 35 m wordt de voetganger nog net gezien (zwak signaal), op 45 m niet meer. De zwarte auto wordt even goed gezien als de witte: voor radar telt het metaal, niet de kleur (voor lidar wel, zie experiment 4)."
+  },
+  {
+    t: "Hoekresolutie: twee worden \xE9\xE9n",
+    set: { ped: { x: 12, y: 1.2 }, dog: { x: 12, y: 2 }, layout: ["world", "lidar", "radar"], lidar: { preset: "vlp16" }, radar: { preset: "mrr", color: "source" } },
+    u: "Een radar onderscheidt twee doelen enkel als ze verschillen in afstand, in snelheid (Doppler) \xF3f in hoek. Een radar voor middellange afstand heeft ongeveer 5\xB0 hoekresolutie: op 12 m is dat ongeveer 1 m breed. De hond staat 0,8 m naast de voetganger, even ver en even stil.",
+    q: "Hoeveel radardetecties zie je bij de voetganger en de hond (<b>Meting</b> \u2192 Radar, en in het radarbeeld)? Waar ligt de detectie? Kies daarna in tabblad <b>Sensor</b> \u2192 <b>Radar</b> het voorbeeld <b>4D-beeldradar</b> (1\xB0). Wat ziet de lidar?",
+    a: 'Met 5\xB0 geeft de radar \xE9\xE9n detectie, tussen voetganger en hond in; de hond staat op "niet gezien". Beide zijn even ver, even stil en liggen binnen \xE9\xE9n hoekresolutie. De 4D-beeldradar (1\xB0) ziet ze apart. De lidar (0,2\xB0) ziet beide, met hun vorm. In het verkeer: een kind naast een geparkeerde auto smelt voor een eenvoudige radar samen met de auto.'
+  },
+  {
+    t: "Doppler: snelheid rechtstreeks gemeten",
+    set: { world: "highway", drive: true, layout: ["world", "radar"], lidar: { preset: "vlp16" }, radar: { preset: "mrr", color: "vr", multipath: false } },
+    u: "Een radar meet de radiale snelheid rechtstreeks via het Dopplereffect: hoe snel een doel naar de radar toe komt (negatief) of ervan weg gaat (positief). De eigen wagen rijdt 30 m/s (108 km/h). Rood = naderend, blauw = wegrijdend, grijs = even snel als wij. Het lijntje bij elke detectie is de snelheid \xD7 0,5 s.",
+    q: "Lees in <b>Meting</b> \u2192 Radar de radiale snelheid van de auto voor ons, de zwarte auto, de vrachtwagen en een tegenligger. Hoe snel rijden die zelf? Waarom heeft de vangrail een radiale snelheid, terwijl hij stilstaat?",
+    a: "Auto voor ons \u2248 \u22121 m/s: hij rijdt 29 m/s, wij halen hem langzaam in. Zwarte auto \u2248 +3 m/s: hij rijdt 33 m/s. Vrachtwagen \u2248 \u22126 m/s: 24 m/s. Tegenligger \u221250 \xE0 \u221262 m/s: hij rijdt zelf \xB131 m/s, in tegengestelde zin (30 + 31 = 61); hoe schuiner we hem zien, hoe kleiner de radiale snelheid (\xD7 cos kijkhoek). De vangrail staat stil, maar wij rijden: radiale snelheid = \u221230 m/s \xD7 cos(kijkhoek). Een lidar moet de snelheid afleiden uit twee opeenvolgende scans."
+  },
+  {
+    t: "Stilstaande doelen en ACC",
+    set: { world: "highway", drive: true, layout: ["world", "radar"], lidar: { preset: "vlp16" }, radar: { preset: "lrr", color: "stat" } },
+    u: "Op de snelweg staat veel stil: vangrail, borden, bruggen, een pechauto. Veel ACC-systemen (adaptieve cruisecontrol) negeren stilstaande doelen: anders zou een brug of een bord boven de weg een noodremming veroorzaken. Grijs = stilstaand, oranje = bewegend.",
+    q: "Rij een tiental seconden. Welke objecten zijn grijs? Zet daarna <b>Stilstaande doelen wegfilteren</b> aan (Sensor \u2192 Radar \u2192 Verwerking). Wat blijft er over? Wat gebeurt er met een auto die stilstaat in jouw rijstrook, bijvoorbeeld aan het einde van een file?",
+    a: "Grijs: vangrail, middenberm, geluidsmuur, brug, borden, de pechauto en de verloren band. Met het filter blijven enkel de rijdende voertuigen over: de auto voor ons, de zwarte auto, de vrachtwagen en de tegenliggers. Een stilstaande auto in je rijstrook wordt \xF3\xF3k weggefilterd. Daarom waarschuwen handleidingen dat ACC niet altijd remt voor stilstaande voertuigen; lidar en camera moeten dat opvangen."
+  },
+  {
+    t: "Spookdoelen via de vangrail",
+    set: { world: "highway", drive: true, layout: ["world", "radar"], lidar: { preset: "vlp16" }, radar: { preset: "mrr", color: "source", multipath: true } },
+    u: "Radargolven kaatsen op een vlakke metalen of betonnen wand (vangrail, middenberm, muur), zoals licht op een spiegel. Een deel bereikt het doel via die omweg: de radar ziet dan een tweede doel, gespiegeld achter de wand. Paars = spookdoel, groenblauw = echt object.",
+    q: "Waar verschijnen de spookdoelen van de vrachtwagen en de auto voor ons? Hebben ze dezelfde snelheid als het echte voertuig (Meting \u2192 Radar)? Zet <b>Weerkaatsing via vangrail en muren</b> uit en weer aan (Sensor \u2192 Radar \u2192 Verwerking). Wat zou een systeem denken van een spookdoel op de rijbaan van de tegenliggers?",
+    a: "Rechts achter de vangrail, in de berm (ongeveer 14 \xE0 18 m rechts), en gespiegeld in de middenberm, dus op de rijbaan van de tegenliggers (ongeveer 11 \xE0 14 m links). Ze zijn zwakker, maar hebben bijna dezelfde radiale snelheid als het echte voertuig. Op de linkerrijbaan rijdt zo'n spookdoel dus in \xF3nze richting: een systeem zou kunnen denken aan een spookrijder. Doelen volgen over meerdere metingen en vergelijken met lidar of camera ontmaskert het spookdoel."
+  },
+  {
+    t: "Regen tegenover een vuile radarkap",
+    set: { world: "highway", layout: ["world", "radar"], lidar: { preset: "vlp16" }, radar: { preset: "lrr" } },
+    u: 'Regen dempt 77 GHz-golven een beetje: zelfs een stortbui kost op 100 m ongeveer 1 dB. Een laag modder, sneeuw of ijs op de radarkap (het plastic kapje v\xF3\xF3r de radar) dempt veel meer, tot 15 dB. Omdat het signaal met <span class="f">R\u2074</span> afneemt, deelt 15 dB het bereik door <span class="f">10<sup>15/40</sup> \u2248 2,4</span>.',
+    q: "Noteer het bereik voor een auto (<b>Meting</b> \u2192 Radar). Zet <b>Regen</b> op stortbui (tabblad Omgeving): hoeveel bereik verliest de radar? Zet regen terug op droog en <b>Vuile radarkap</b> op het maximum (Sensor \u2192 Radar \u2192 Montage). Vergelijk bij een stortbui ook het bereik van de lidar (Meting \u2192 Lidar).",
+    a: 'Droog 200 m, stortbui \xB1180 m (\u221210 %), vuile radarkap \xB184 m (bijna gedeeld door 2,4). Daarom melden wagens "radar geblokkeerd, reinig de sensor", en zit er soms een verwarming in de radarkap. De lidar verliest bij een stortbui veel meer: het bereik voor een wit object zakt van \xB1280 m naar \xB190 m, en de druppels geven ruispunten.'
+  }
+];
+var experiments_default2 = EXPS2;
+
+// src/sensors/radar/rcs.js
+var CAR = { rcs: 10, mode: "obj", under: 0.1 };
+var PERSON = { rcs: 0.5, mode: "obj" };
+var RCS = {
+  "Voetganger": PERSON,
+  "Persoon achter glas": PERSON,
+  "Persoon (in het veld)": PERSON,
+  "Persoon tussen gewas": PERSON,
+  "Persoon op pechstrook": PERSON,
+  "Hond (0,5 m)": { rcs: 0.1, mode: "obj" },
+  "Witte auto": CAR,
+  "Zwarte auto (5 %)": CAR,
+  "Auto voor ons": CAR,
+  "Auto achter ons": CAR,
+  "Pechauto op pechstrook": CAR,
+  "Tegenliggers": CAR,
+  "Vrachtwagen-laadbak (vanaf 1,0 m)": { rcs: 30, mode: "obj" },
+  "Vrachtwagen-cabine en wielen": { rcs: 20, mode: "obj" },
+  "Vrachtwagen met oplegger": { rcs: 100, mode: "obj" },
+  "Motorrijder": { rcs: 2, mode: "obj" },
+  "Verloren band (0,25 m)": { rcs: 0.3, mode: "obj" },
+  "Slagboom (0,9\u20131,0 m)": { rcs: 1, mode: "obj" },
+  "Slagboompaal": { rcs: 0.3, mode: "obj" },
+  "Stoeprand (15 cm)": { rcs: 0.02, mode: "ext" },
+  "Palen (\xD8 12 cm)": { rcs: 0.3, mode: "part" },
+  "Verkeersbord (retroreflecterend)": { rcs: 5, mode: "obj" },
+  "Paal verkeersbord": { rcs: 0.2, mode: "obj" },
+  "Glaswand bushokje": { rcs: 0.05, mode: "ext", T: 0.9 },
+  "Bushokje (dak en zijkant)": { rcs: 1, mode: "ext" },
+  "Haag": { rcs: 0.2, mode: "ext", T: 0.5 },
+  "Gebouw": { rcs: 10, mode: "ext" },
+  "Muur": { rcs: 10, mode: "ext", mirror: true },
+  "Ma\xEFsrijen (0,8 m)": { rcs: 0.1, mode: "ext", T: 0.8 },
+  "Ronde balen": { rcs: 0.3, mode: "part" },
+  "Draadafsluiting (1,0 m)": { rcs: 0.01, mode: "ext" },
+  "Afsluitpalen (\xD8 10 cm)": { rcs: 0.05, mode: "part" },
+  "Tractor": { rcs: 30, mode: "obj" },
+  "Schuur": { rcs: 10, mode: "ext" },
+  "Silo": { rcs: 40, mode: "obj" },
+  "Graanwagen (vanaf 1,1 m)": { rcs: 30, mode: "obj" },
+  "Vangrail (0,55\u20130,8 m)": { rcs: 5, mode: "ext", mirror: true },
+  "Vangrailpalen": { rcs: 0.1, mode: "part" },
+  "Middenberm (New Jersey, 0,85 m)": { rcs: 3, mode: "ext", mirror: true },
+  "Hectometerpaaltjes (retro)": { rcs: 0.1, mode: "part" },
+  "Portiek met borden": { rcs: 40, mode: "obj" },
+  "Borden boven de weg (retro)": { rcs: 60, mode: "obj" },
+  "Brug (onderkant 5,4 m)": { rcs: 300, mode: "obj" },
+  "Geluidsmuur": { rcs: 10, mode: "ext", mirror: true }
+};
+var rcsOf = (o) => RCS[o.name] || { rcs: Math.max(0.05, o.rho * 2), mode: "obj" };
+
+// src/sensors/radar/model.js
+var BW = 0.1;
+var BWR = BW * D2R;
+var TWO_PI2 = 2 * Math.PI;
+var PI = Math.PI;
+var thr = () => 10 / Math.pow(R.rmax, 4);
+var alphaRain = () => S.rain * 12e-4;
+var dirtF = () => Math.pow(10, -1.5 * R.dirt);
+function rangeFor(rcs) {
+  const a = alphaRain(), d = dirtF(), th = thr();
+  let lo = 0.5, hi = 2e3;
+  const ok = (t) => rcs * Math.exp(-2 * a * t) * d / Math.pow(t, 4) >= th;
+  if (!ok(lo)) return 0;
+  for (let i = 0; i < 60; i++) {
+    const m = (lo + hi) / 2;
+    ok(m) ? lo = m : hi = m;
+  }
+  return lo;
+}
+function radarPose() {
+  const m = MOUNTS2[R.mount], c = Math.cos(EGO.yaw), s = Math.sin(EGO.yaw);
+  return { ox: S.vx + m.x * c - m.y * s, oy: S.vy + m.x * s + m.y * c, head: EGO.yaw + m.yaw * D2R, h: R.mountH };
+}
+var egoVel = () => F.driving ? [S.speed, EGO.vyRate] : [0, 0];
+var objVel = (o) => F.driving ? o.v || 0 : 0;
+function segDist2(ox, oy, p) {
+  const ex = p.x2 - p.x1, ey = p.y2 - p.y1, l2 = ex * ex + ey * ey;
+  let t = l2 > 0 ? ((ox - p.x1) * ex + (oy - p.y1) * ey) / l2 : 0;
+  t = Math.max(0, Math.min(1, t));
+  return Math.hypot(p.x1 + t * ex - ox, p.y1 + t * ey - oy);
+}
+function hit(p, ox, oy, dx, dy) {
+  if (p.k === 0) {
+    const ex = p.x2 - p.x1, ey = p.y2 - p.y1, den = dx * ey - dy * ex;
+    if (Math.abs(den) < 1e-12) return -1;
+    const wx = p.x1 - ox, wy = p.y1 - oy, t = (wx * ey - wy * ex) / den, u = (wx * dy - wy * dx) / den;
+    return u < 0 || u > 1 ? -1 : t;
+  }
+  const fx = ox - p.cx, fy = oy - p.cy, b = fx * dx + fy * dy, c = fx * fx + fy * fy - p.r * p.r, disc = b * b - c;
+  return disc < 0 ? -1 : -b - Math.sqrt(disc);
+}
+function mirrorLines(oy) {
+  const L2 = [];
+  for (const p of W.prims) {
+    if (p.k !== 0 || !rcsOf(p.o).mirror) continue;
+    if (Math.abs(p.y1 - p.y2) < 1e-6 && Math.abs(p.x2 - p.x1) > 20) L2.push({ yw: p.y1, xa: Math.min(p.x1, p.x2), xb: Math.max(p.x1, p.x2) });
+  }
+  const near = (s) => L2.filter((l) => Math.sign(l.yw - oy) === s).sort((x, y) => Math.abs(x.yw - oy) - Math.abs(y.yw - oy))[0];
+  return [near(1), near(-1)].filter(Boolean);
+}
+function detect(rng) {
+  const P = radarPose(), nb = Math.max(1, Math.round(R.hfov / BW)), a0 = P.head - R.hfov / 2 * D2R, tv = Math.tan(R.vfov / 2 * D2R), rc = R.rmax * 1.6;
+  const bins = new Array(nb);
+  for (let i = 0; i < nb; i++) bins[i] = [];
+  for (const p of W.prims) {
+    let aS, span, d;
+    if (p.k === 0) {
+      d = segDist2(P.ox, P.oy, p);
+      if (d > rc) continue;
+      const a1 = Math.atan2(p.y1 - P.oy, p.x1 - P.ox), a2 = Math.atan2(p.y2 - P.oy, p.x2 - P.ox), df = fmod(a2 - a1 + PI, TWO_PI2) - PI;
+      aS = df >= 0 ? a1 : a2;
+      span = Math.abs(df);
+    } else {
+      const dc = Math.hypot(p.cx - P.ox, p.cy - P.oy);
+      if (dc <= p.r) continue;
+      d = dc - p.r;
+      if (d > rc) continue;
+      const h = Math.asin(p.r / dc);
+      aS = Math.atan2(p.cy - P.oy, p.cx - P.ox) - h;
+      span = 2 * h;
+    }
+    const rel = fmod(aS - a0 + PI, TWO_PI2) - PI;
+    let b0 = Math.floor(rel / BWR), b1 = Math.floor((rel + span) / BWR);
+    if (b1 < 0 || b0 >= nb) continue;
+    b0 = Math.max(0, b0);
+    b1 = Math.min(nb - 1, b1);
+    for (let b = b0; b <= b1; b++) {
+      const a2 = a0 + (b + 0.5) * BWR, t = hit(p, P.ox, P.oy, Math.cos(a2), Math.sin(a2));
+      if (t < 0.3 || t > rc) continue;
+      const zv = t * tv, lo = Math.max(0, P.h - zv), hi = P.h + zv;
+      if (p.z1 < lo || p.z0 > hi) continue;
+      bins[b].push({ t, p, cov: (Math.min(p.z1, hi) - Math.max(p.z0, lo)) / (hi - lo) });
+    }
+  }
+  const rets = [], counts = /* @__PURE__ */ new Map();
+  for (let b = 0; b < nb; b++) {
+    const list = bins[b];
+    if (!list.length) continue;
+    list.sort((x, y) => x.t - y.t);
+    let T = 1;
+    const seen = /* @__PURE__ */ new Set();
+    for (const h of list) {
+      const o = h.p.o, info = rcsOf(o), ext = info.mode === "ext";
+      const dk = ext ? o.idx * 4096 + h.p.pi : o.idx;
+      if (seen.has(dk)) continue;
+      seen.add(dk);
+      const key = info.mode === "part" ? o.idx * 4096 + h.p.pi : o.idx;
+      rets.push({ b, t: h.t, o, key, T, info });
+      if (!ext) counts.set(key, (counts.get(key) || 0) + 1);
+      if (info.T) T *= info.T;
+      else T *= 1 - h.cov * (1 - (info.under || 0));
+      if (T < 5e-3) break;
+    }
+  }
+  const a = alphaRain(), dF = dirtF(), th = thr(), ve = egoVel(), AR = R.angRes * D2R;
+  const items = [], perKey = /* @__PURE__ */ new Map();
+  for (const r of rets) {
+    const w = r.info.mode === "ext" ? r.info.rcs * r.t * BWR : r.info.rcs / counts.get(r.key);
+    const sig = w * r.T * Math.exp(-2 * a * r.t) * dF / Math.pow(r.t, 4);
+    const az = a0 + (r.b + 0.5) * BWR, vo = objVel(r.o), it = { t: r.t, az, sig, vr: (vo - ve[0]) * Math.cos(az) - ve[1] * Math.sin(az), r };
+    if (r.info.mode === "ext") {
+      if (sig >= th * 0.02) items.push(it);
+      continue;
+    }
+    (perKey.get(r.key) || perKey.set(r.key, []).get(r.key)).push(it);
+  }
+  for (const list of perKey.values()) {
+    list.sort((x, y) => x.az - y.az);
+    let g = null;
+    const flush = () => {
+      if (g) {
+        g.az = g.as / g.sig;
+        g.vr = g.vs / g.sig;
+        items.push(g);
+      }
+    };
+    for (const it of list) {
+      if (!g || it.az - g.az0 > AR) {
+        flush();
+        g = { ...it, az0: it.az, as: it.sig * it.az, vs: it.sig * it.vr };
+      } else {
+        g.t = Math.min(g.t, it.t);
+        g.sig += it.sig;
+        g.as += it.sig * it.az;
+        g.vs += it.sig * it.vr;
+      }
+    }
+    flush();
+  }
+  items.sort((x, y) => y.sig - x.sig);
+  const cls = [];
+  for (const it of items) {
+    let c = null;
+    for (const q of cls) if (Math.abs(it.t - q.t0) <= R.rangeRes && Math.abs(it.vr - q.v0) <= R.vRes && Math.abs(it.az - q.a0) <= AR) {
+      c = q;
+      break;
+    }
+    if (!c) {
+      c = { t0: it.t, v0: it.vr, a0: it.az, P: 0, ts: 0, as: 0, vs: 0, best: it.r };
+      cls.push(c);
+    }
+    c.P += it.sig;
+    c.ts += it.sig * it.t;
+    c.as += it.sig * it.az;
+    c.vs += it.sig * it.vr;
+  }
+  const dets = [];
+  const mk = (t, az, vr, Pw, o, src, info) => {
+    const ux = Math.cos(az), uy = Math.sin(az), x = P.ox + t * ux, y = P.oy + t * uy;
+    const vg = vr + ve[0] * ux + ve[1] * uy, c = Math.cos(-EGO.yaw), s = Math.sin(-EGO.yaw), dx = x - S.vx, dy = y - S.vy;
+    return { t, az, vr, snr: 10 * Math.log10(Pw / th), P: Pw, o, src, info, x, y, vx: dx * c - dy * s, vy: dx * s + dy * c, azv: az - EGO.yaw, stat: Math.abs(vg) < 0.5 };
+  };
+  for (const c of cls) {
+    if (c.P < th) continue;
+    const t = c.ts / c.P + gauss(rng) * R.rangeRes / 4, az = c.as / c.P + gauss(rng) * R.angRes * 0.1 * D2R, vr = Math.round(c.vs / c.P / R.vRes) * R.vRes;
+    dets.push(mk(t, az, vr, c.P, c.best.o, "obj", c.best.info));
+  }
+  if (R.multipath) {
+    const lines = mirrorLines(P.oy), real = dets.slice();
+    for (const d of real) {
+      if (d.info.mode === "ext" || d.t < 2) continue;
+      for (const l of lines) {
+        if (Math.sign(P.oy - l.yw) !== Math.sign(d.y - l.yw) || Math.abs(d.y - l.yw) < 0.3) continue;
+        const gx = d.x, gy = 2 * l.yw - d.y, s = (l.yw - P.oy) / (gy - P.oy);
+        if (s <= 0 || s >= 1) continue;
+        const xr = P.ox + s * (gx - P.ox);
+        if (xr < l.xa || xr > l.xb) continue;
+        const tg = Math.hypot(gx - P.ox, gy - P.oy), azg = Math.atan2(gy - P.oy, gx - P.ox);
+        if (Math.abs(fmod(azg - P.head + PI, TWO_PI2) - PI) > R.hfov / 2 * D2R || tg > rc) continue;
+        const Pg = d.P * 0.25 * Math.pow(d.t / tg, 4);
+        if (Pg < th) continue;
+        const vo = objVel(d.o), vr = Math.round(((vo - ve[0]) * Math.cos(azg) - ve[1] * Math.sin(azg)) / R.vRes) * R.vRes;
+        dets.push(mk(tg, azg, vr, Pg, d.o, "ghost", d.info));
+      }
+    }
+  }
+  for (const d of dets) d.filtered = R.statFilter && d.stat;
+  return { dets, pose: P };
+}
+
+// src/sensors/radar/view.js
+import * as THREE7 from "three";
+import { OrbitControls as OrbitControls3 } from "three/addons/controls/OrbitControls.js";
+var MAXD = 400;
+var V2 = (x, y, z) => new THREE7.Vector3(x, z, -y);
+var radStage = document.createElement("section");
+radStage.className = "stage sview";
+radStage.id = "radStage";
+radStage.dataset.pane = "radar";
+radStage.setAttribute("aria-label", "Radarbeeld");
+radStage.innerHTML = '<div class="pcvhead" id="radHead"></div><div class="pcvtb" id="radTb"><button data-rv="top" class="on">Boven</button><button data-rv="3d">3D</button><button id="radFs" title="Radarbeeld op volledig scherm (Esc = terug)">\u26F6</button></div><div class="pcvleg" id="radLeg"></div>';
+$("viewsBox").appendChild(radStage);
+var radR = new THREE7.WebGLRenderer({ antialias: true });
+radR.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+radStage.prepend(radR.domElement);
+var radScene = new THREE7.Scene();
+radScene.background = new THREE7.Color(329738);
+var radCam = new THREE7.PerspectiveCamera(50, 1, 0.1, 2e3);
+var radCtl = new OrbitControls3(radCam, radR.domElement);
+radCtl.enableDamping = true;
+{
+  const eg = new THREE7.Mesh(new THREE7.BoxGeometry(CARL, 1.4, 1.84), new THREE7.MeshBasicMaterial({ color: 3983274, transparent: true, opacity: 0.18 }));
+  eg.position.set(CARC, 0.7, 0);
+  const ed = new THREE7.LineSegments(new THREE7.EdgesGeometry(eg.geometry), new THREE7.LineBasicMaterial({ color: 3983274 }));
+  ed.position.copy(eg.position);
+  radScene.add(eg, ed);
+}
+var fovGrp = new THREE7.Group();
+radScene.add(fovGrp);
+var dotGeo = new THREE7.SphereGeometry(0.45, 14, 10);
+var dotMat = new THREE7.MeshBasicMaterial({ color: 16777215 });
+var dots = new THREE7.InstancedMesh(dotGeo, dotMat, MAXD);
+dots.instanceMatrix.setUsage(THREE7.DynamicDrawUsage);
+dots.count = 0;
+dots.frustumCulled = false;
+radScene.add(dots);
+var vecGeo = new THREE7.BufferGeometry();
+vecGeo.setAttribute("position", new THREE7.BufferAttribute(new Float32Array(MAXD * 6), 3));
+vecGeo.setAttribute("color", new THREE7.BufferAttribute(new Float32Array(MAXD * 6), 3));
+var vecs = new THREE7.LineSegments(vecGeo, new THREE7.LineBasicMaterial({ vertexColors: true }));
+vecs.frustumCulled = false;
+radScene.add(vecs);
+var radView = "top";
+function setRadView(v) {
+  radView = v;
+  document.querySelectorAll("#radTb [data-rv]").forEach((b) => b.classList.toggle("on", b.dataset.rv === v));
+  const r = Math.min(R.rmax, 150), m = MOUNTS2[R.mount], cx = m.x + Math.cos(m.yaw * D2R) * r * 0.45, cy = m.y + Math.sin(m.yaw * D2R) * r * 0.45;
+  if (v === "top") {
+    radCam.position.copy(V2(cx - 0.01, cy, r * 1.25));
+    radCtl.target.copy(V2(cx, cy, 0));
+  } else {
+    radCam.position.copy(V2(-12, 0, 9));
+    radCtl.target.copy(V2(cx, cy, 0));
+  }
+  radCtl.update();
+}
+document.querySelectorAll("#radTb [data-rv]").forEach((b) => b.addEventListener("click", () => setRadView(b.dataset.rv)));
+$("radFs").addEventListener("click", () => {
+  try {
+    if (document.fullscreenElement) document.exitFullscreen();
+    else radStage.requestFullscreen().catch(() => toast("Volledig scherm is hier niet toegelaten"));
+  } catch {
+    toast("Volledig scherm is hier niet toegelaten");
+  }
+});
+var fovSig = "";
+function updateFov() {
+  const sig = R.hfov + "|" + R.rmax + "|" + R.mount;
+  if (sig === fovSig) return;
+  fovSig = sig;
+  fovGrp.clear();
+  const m = MOUNTS2[R.mount], a0 = (m.yaw - R.hfov / 2) * D2R, a1 = (m.yaw + R.hfov / 2) * D2R, rm = R.rmax * 1.2;
+  const line = (pts, col) => fovGrp.add(new THREE7.Line(new THREE7.BufferGeometry().setFromPoints(pts), new THREE7.LineBasicMaterial({ color: col })));
+  line([V2(m.x, m.y, 0.02), V2(m.x + rm * Math.cos(a0), m.y + rm * Math.sin(a0), 0.02)], 7035434);
+  line([V2(m.x, m.y, 0.02), V2(m.x + rm * Math.cos(a1), m.y + rm * Math.sin(a1), 0.02)], 7035434);
+  const step = R.rmax > 120 ? 50 : R.rmax > 50 ? 20 : 10;
+  for (let r = step; r <= rm; r += step) {
+    const pts = [];
+    for (let i = 0; i <= 64; i++) {
+      const a = a0 + (a1 - a0) * i / 64;
+      pts.push(V2(m.x + r * Math.cos(a), m.y + r * Math.sin(a), 0.02));
+    }
+    line(pts, 1915460);
+  }
+  fan.geometry.dispose();
+  fan.geometry = new THREE7.CircleGeometry(Math.min(R.rmax, 250), 64, a0, a1 - a0);
+  fan.geometry.rotateX(-Math.PI / 2);
+  fan.position.set(m.x, 0.03, -m.y);
+  box.position.set(m.x, R.mountH, -m.y);
+  box.rotation.y = m.yaw * D2R;
+}
+var C = new THREE7.Color();
+var GREY = new THREE7.Color(10135213);
+function detColor(d, mode2, out) {
+  if (mode2 === "source") return out.set(d.src === "ghost" ? 13650943 : 2078115);
+  if (mode2 === "stat") return out.set(d.stat ? 10135213 : 16754224);
+  if (mode2 === "snr") {
+    const v2 = Math.max(0, Math.min(1, (d.snr - 0) / 35));
+    return out.setHSL(50 / 360, 0.95, 0.2 + 0.6 * v2);
+  }
+  const v = Math.max(-1, Math.min(1, d.vr / 15));
+  return v < 0 ? out.copy(GREY).lerp(C.set(16726843), -v) : out.copy(GREY).lerp(C.set(3902463), v);
+}
+function legendHtml2() {
+  const m = R.color;
+  if (m === "source") return '<span><i style="background:#1fb5a3"></i>echt object</span><span><i style="background:#d04bff"></i>spookdoel (multipath)</span>';
+  if (m === "stat") return '<span><i style="background:#ffa630"></i>bewegend</span><span><i style="background:#9aa6ad"></i>stilstaand</span>';
+  if (m === "snr") return '0 dB<span class="barc" style="background:linear-gradient(90deg,hsl(50,95%,20%),hsl(50,95%,80%))"></span>35 dB';
+  return 'naderend \u221215 m/s<span class="barc" style="background:linear-gradient(90deg,#ff3b3b,#9aa6ad,#3b8bff)"></span>+15 m/s wegrijdend';
+}
+var fan = new THREE7.Mesh(new THREE7.CircleGeometry(1, 8), new THREE7.MeshBasicMaterial({ color: 16756736, transparent: true, opacity: 0.07, depthWrite: false, side: THREE7.DoubleSide }));
+fan.renderOrder = -1;
+veh.add(fan);
+var box = new THREE7.Mesh(new THREE7.BoxGeometry(0.06, 0.09, 0.16), new THREE7.MeshStandardMaterial({ color: 1777442, roughness: 0.4 }));
+veh.add(box);
+var pegs = new THREE7.InstancedMesh(new THREE7.CylinderGeometry(0.18, 0.18, 1.2, 10), new THREE7.MeshBasicMaterial({ color: 16777215, transparent: true, opacity: 0.85 }), MAXD);
+pegs.instanceMatrix.setUsage(THREE7.DynamicDrawUsage);
+pegs.count = 0;
+pegs.frustumCulled = false;
+scene.add(pegs);
+var M4 = new THREE7.Matrix4();
+var Q = new THREE7.Quaternion();
+var SC = new THREE7.Vector3();
+var P3 = new THREE7.Vector3();
+function showDets(dets) {
+  const shown = dets.filter((d) => !d.filtered).slice(0, MAXD), pa = vecGeo.attributes.position.array, ca = vecGeo.attributes.color.array;
+  shown.forEach((d, i) => {
+    const s = (d.stat ? 0.45 : 0.7) + Math.min(1, Math.max(0, d.snr) / 30) * (d.stat ? 0.4 : 1);
+    P3.copy(V2(d.vx, d.vy, R.mountH));
+    SC.set(s, s, s);
+    M4.compose(P3, Q, SC);
+    dots.setMatrixAt(i, M4);
+    detColor(d, R.color, C);
+    dots.setColorAt(i, C);
+    const L2 = R.vectors && !d.stat ? d.vr * 0.5 : 0, ex = d.vx + L2 * Math.cos(d.azv), ey = d.vy + L2 * Math.sin(d.azv), o = i * 6;
+    pa[o] = d.vx;
+    pa[o + 1] = R.mountH;
+    pa[o + 2] = -d.vy;
+    pa[o + 3] = ex;
+    pa[o + 4] = R.mountH;
+    pa[o + 5] = -ey;
+    for (let k = 0; k < 6; k += 3) {
+      ca[o + k] = C.r;
+      ca[o + k + 1] = C.g;
+      ca[o + k + 2] = C.b;
+    }
+    const ps = d.stat ? 0.5 : 1;
+    P3.copy(V2(d.x, d.y, 0.6 * ps));
+    SC.set(ps, ps, ps);
+    M4.compose(P3, Q, SC);
+    pegs.setMatrixAt(i, M4);
+    pegs.setColorAt(i, C);
+  });
+  dots.count = shown.length;
+  pegs.count = R.show3d ? shown.length : 0;
+  dots.instanceMatrix.needsUpdate = true;
+  if (dots.instanceColor) dots.instanceColor.needsUpdate = true;
+  pegs.instanceMatrix.needsUpdate = true;
+  if (pegs.instanceColor) pegs.instanceColor.needsUpdate = true;
+  vecGeo.setDrawRange(0, shown.length * 2);
+  vecGeo.attributes.position.needsUpdate = true;
+  vecGeo.attributes.color.needsUpdate = true;
+  fan.visible = R.show3d;
+}
+
+// src/sensors/radar/metrics.js
+function initMeas2() {
+  $("meas-radar").insertAdjacentHTML("beforeend", `
+  <section><h2>Wat ziet de radar?</h2><div id="radObj"></div><p class="hint">Aantal detecties per object in de laatste meting, met de radiale snelheid van de sterkste detectie (negatief = naderend). Spookdoelen (multipath) apart.</p></section>
+  <section><h2>Meetwaarden radar</h2><div id="radMet"></div></section>
+  <section><h2>Radar tegenover lidar</h2>
+    <table class="cmp">
+      <tr><td>Weer</td><td>Radar (golflengte 4 mm) ziet door mist, stof en regen. Lidar (905/1550 nm) wordt erdoor verblind.</td></tr>
+      <tr><td>Snelheid</td><td>Radar meet de radiale snelheid rechtstreeks (Doppler). Lidar moet ze afleiden uit opeenvolgende scans.</td></tr>
+      <tr><td>Resolutie</td><td>Radar: enkele graden. Lidar: tienden van een graad. Radar ziet "iets", lidar ziet de vorm.</td></tr>
+      <tr><td>Materiaal</td><td>Radar: metaal sterk, mens zwak, kleur maakt niet uit. Lidar: kleur en reflectie bepalen het bereik.</td></tr>
+    </table>
+  </section>
+  <section><h2>Formules</h2>
+    <p class="hint">ontvangen vermogen \u2248 <span class="f">\u03C3 / R\u2074</span> \u2192 bereik \u221D <span class="f">\u03C3<sup>\xBC</sup></span> \xB7 celbreedte = <span class="f">R \xB7 \u0394\u03B8</span> \xB7 Doppler: <span class="f">v<sub>r</sub> = \u03BB\xB7f<sub>D</sub>/2</span> (77 GHz: 1 m/s \u2248 513 Hz) \xB7 spookdoel: spiegelbeeld achter de wand</p>
+  </section>`);
+}
+function metrics2(res2) {
+  const dets = res2 ? res2.dets : [], shown = dets.filter((d) => !d.filtered), ghosts = shown.filter((d) => d.src === "ghost").length, filt = dets.length - shown.length;
+  const cnt = /* @__PURE__ */ new Map(), gh = /* @__PURE__ */ new Map(), fl = /* @__PURE__ */ new Map(), best = /* @__PURE__ */ new Map();
+  for (const d of dets) {
+    const n = d.o.name, m = d.filtered ? fl : d.src === "ghost" ? gh : cnt;
+    m.set(n, (m.get(n) || 0) + 1);
+    if (d.src !== "ghost" && (!best.has(n) || d.P > best.get(n).P)) best.set(n, d);
+  }
+  let t = "<table>";
+  const done = /* @__PURE__ */ new Set();
+  for (const o of W.objs) {
+    if (!o.key || done.has(o.name)) continue;
+    done.add(o.name);
+    const n = cnt.get(o.name) || 0, f = fl.get(o.name) || 0, g = gh.get(o.name) || 0;
+    const pill = n ? '<span class="pill ok">gezien</span>' : f ? '<span class="pill lo">weggefilterd</span>' : '<span class="pill no">niet gezien</span>';
+    const b = best.get(o.name), v = b ? " \xB7 " + (b.vr > 0 ? "+" : "") + nl(b.vr, 1) + " m/s" : "";
+    t += '<tr><td class="lbl">' + o.name + "</td><td>" + n + v + (g ? ' <b class="w">+' + g + " spook</b>" : "") + " " + pill + "</td></tr>";
+  }
+  $("radObj").innerHTML = t + "</table>";
+  const rows = [];
+  rows.push(["Detecties (getoond)", String(shown.length)]);
+  if (ghosts) rows.push(["waarvan spookdoelen (multipath)", String(ghosts), "w"]);
+  if (R.statFilter) rows.push(["Stilstaand, weggefilterd", String(filt), filt ? "w" : ""]);
+  rows.push(["Celbreedte op 20 m (R\xB7\u0394\u03B8)", nl(20 * R.angRes * D2R, 1) + " m"]);
+  rows.push(["Celbreedte op 100 m", nl(100 * R.angRes * D2R, 1) + " m", 100 * R.angRes * D2R > 3.5 ? "w" : ""]);
+  rows.push(["Afstandsresolutie", nl(R.rangeRes, 2) + " m"]);
+  rows.push(["Snelheidsresolutie", nl(R.vRes, 2) + " m/s (" + nl(R.vRes * 3.6, 1) + " km/h)"]);
+  rows.push(["Bereik vrachtwagen (100 m\xB2)", nl(rangeFor(100), 0) + " m"]);
+  rows.push(["Bereik auto (10 m\xB2)", nl(rangeFor(10), 0) + " m"]);
+  rows.push(["Bereik motorrijder (2 m\xB2)", nl(rangeFor(2), 0) + " m"]);
+  rows.push(["Bereik voetganger (0,5 m\xB2)", nl(rangeFor(0.5), 0) + " m"]);
+  if (S.rain > 0) rows.push(["Demping regen op 100 m (heen en terug)", nl(10 * Math.log10(Math.exp(2 * alphaRain() * 100)), 1) + " dB"]);
+  if (R.dirt > 0) rows.push(["Demping vuile radarkap", nl(15 * R.dirt, 1) + " dB", "w"]);
+  if (S.fog > 0 || S.dust) rows.push(["Mist en stof", "geen invloed op radar"]);
+  $("radMet").innerHTML = "<table>" + rows.map((r) => '<tr><td class="lbl">' + r[0] + '</td><td><b class="' + (r[2] || "") + '">' + r[1] + "</b></td></tr>").join("") + "</table>";
+  const name = { lrr: "lange afstand", mrr: "middellange afstand", srr: "hoekradar", img: "4D-beeldradar", custom: "eigen" }[R.preset];
+  $("hud-radar").innerHTML = "radar " + name + " \xB7 \xB1" + nl(R.hfov / 2, 0) + "\xB0 \xB7 " + nl(R.angRes, 1) + "\xB0 \xB7 " + R.freq + " Hz \xB7 " + shown.length + " detecties" + (ghosts ? ' \xB7 <span class="w">' + ghosts + " spook</span>" : "") + (filt ? ' \xB7 <span class="w">' + filt + " stilstaand weggefilterd</span>" : "");
+  $("radHead").innerHTML = "<b>RADAR 77 GHz</b>  " + shown.length + " detecties \xB7 " + R.freq + " Hz" + (F.driving ? " \xB7 eigen snelheid " + Math.round(S.speed * 3.6) + " km/h" : "") + "\nbogen om de " + (R.rmax > 120 ? 50 : R.rmax > 50 ? 20 : 10) + " m \xB7 vector = vr \xD7 0,5 s";
+  $("radLeg").innerHTML = legendHtml2();
+}
+
+// src/sensors/radar/index.js
+var acc = 0;
+var lastMetrics2 = 0;
+var res = null;
+var scanNo = 0;
+function scan() {
+  res = detect(mulberry32(F.driving ? Math.random() * 4294967296 >>> 0 : 777 + scanNo));
+  showDets(res.dets);
+}
+var radar_default = {
+  id: "radar",
+  label: "Radar",
+  state: R,
+  params: controls_default2,
+  presets: PRESETS2,
+  experiments: experiments_default2,
+  views: [{ id: "radar", label: "Radarbeeld", stage: radStage, renderer: radR, camera: radCam }],
+  onChange(k) {
+    if (k === "preset" && R.preset !== "custom") Object.assign(R, PRESETS2[R.preset]);
+    else if (SENSORKEYS2.includes(k)) R.preset = "custom";
+    if (["preset", "mount", "rmax", "hfov"].includes(k)) setTimeout(() => setRadView(radView), 0);
+  },
+  disabled() {
+    return false;
+  },
+  reset(o) {
+    const ns = JSON.parse(JSON.stringify(RBASE));
+    Object.assign(ns, { color: R.color, vectors: R.vectors, show3d: R.show3d });
+    const pr = o.preset || "mrr";
+    Object.assign(ns, PRESETS2[pr]);
+    ns.preset = pr;
+    Object.assign(ns, o);
+    Object.assign(R, ns);
+  },
+  eye() {
+    const m = MOUNTS2[R.mount];
+    return { x: m.x, h: R.mountH };
+  },
+  init() {
+    initMeas2();
+    updateFov();
+    setRadView("top");
+  },
+  resetView() {
+    setRadView(radView);
+  },
+  update3d() {
+    updateFov();
+  },
+  step(dt, now, force) {
+    acc += dt;
+    if (force || F.driving && acc >= 1 / R.freq) {
+      acc = 0;
+      scanNo++;
+      scan();
+    }
+    if (force || F.driving && now - lastMetrics2 > 250) {
+      metrics2(res);
+      lastMetrics2 = now;
+    }
+  },
+  animate() {
+    radCtl.update();
+  },
+  render(vis) {
+    if (vis.has("radar")) radR.render(radScene, radCam);
+  },
+  stats: () => res,
+  bench() {
+    const t = performance.now();
+    scan();
+    return performance.now() - t;
+  }
+};
+
 // src/core/sensors.js
-var SENSORS = [lidar_default];
+var SENSORS = [lidar_default, radar_default];
 var SMAP = Object.fromEntries(SENSORS.map((s) => [s.id, s]));
 
 // src/core/camera.js
@@ -2081,14 +2733,14 @@ function setLayout(spec) {
   const ids = Array.isArray(spec) ? spec : spec === "split" ? ["world", first] : spec === "pcv" ? [first] : [spec];
   VIS.clear();
   for (const i of ids) VIS.add(i);
-  const box = $("viewsBox");
+  const box2 = $("viewsBox");
   let n = 0;
-  for (const el of box.querySelectorAll(":scope > [data-pane]")) {
+  for (const el of box2.querySelectorAll(":scope > [data-pane]")) {
     const on = VIS.has(el.dataset.pane);
     el.hidden = !on;
     if (on) n++;
   }
-  box.style.setProperty("--n", Math.max(1, n));
+  box2.style.setProperty("--n", Math.max(1, n));
   document.querySelectorAll("#layoutSeg button").forEach((b) => b.classList.toggle("on", VIS.has(b.dataset.p)));
   requestAnimationFrame(resize);
 }
@@ -2121,7 +2773,7 @@ function buildPanels() {
 }
 
 // src/core/ui.js
-import * as THREE7 from "three";
+import * as THREE8 from "three";
 var CTRL = { env: [] };
 CTRL.env = [
   { g: "Wereld", items: [
@@ -2318,8 +2970,8 @@ $("resetBtn").addEventListener("click", () => {
   F.dirty = true;
   resetCams();
 });
-var ray = new THREE7.Raycaster();
-var ndc = new THREE7.Vector2();
+var ray = new THREE8.Raycaster();
+var ndc = new THREE8.Vector2();
 var downXY = null;
 renderer.domElement.addEventListener("pointerdown", (e) => {
   downXY = [e.clientX, e.clientY];
@@ -2330,9 +2982,9 @@ renderer.domElement.addEventListener("pointerup", (e) => {
   const r = renderer.domElement.getBoundingClientRect();
   ndc.set((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1);
   ray.setFromCamera(ndc, camera);
-  const hit = ray.intersectObject(ground)[0];
-  if (!hit) return;
-  const x = hit.point.x, y = -hit.point.z;
+  const hit2 = ray.intersectObject(ground)[0];
+  if (!hit2) return;
+  const x = hit2.point.x, y = -hit2.point.z;
   if (x > S.vx - CARL - 0.4 && x < S.vx + 0.5 && Math.abs(y - S.vy) < 1.3) {
     toast("Niet op de eigen wagen");
     return;
@@ -2344,7 +2996,7 @@ renderer.domElement.addEventListener("pointerup", (e) => {
 });
 
 // src/core/experiments.js
-var EXPS2 = SENSORS.flatMap((s) => s.experiments);
+var EXPS3 = SENSORS.flatMap((s) => s.experiments);
 function applyState(over) {
   const ns = JSON.parse(JSON.stringify(BASE));
   const w = WORLDSTART[over.world || "street"];
@@ -2380,7 +3032,7 @@ function buildExps() {
   $("exps").innerHTML = h;
   $("exps").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => {
     const i = +b.dataset.i;
-    applyState(EXPS2[i].set);
+    applyState(EXPS3[i].set);
     markExp(i);
     toast("Experiment " + (i + 1) + " ingesteld");
   }));
@@ -2478,7 +3130,7 @@ function start() {
   for (const s of SENSORS) if (s.init) s.init();
   setLayout(innerWidth < 860 ? ["world"] : ["world", ...SENSORS.map((s) => s.views[0].id)]);
   requestAnimationFrame(frame);
-  window.__sim = { EGO, S, SENSORS, applyState, EXPS: EXPS2, stat: SENSORS[0].stats, setLayout, W: () => W, bench: SENSORS[0].bench };
+  window.__sim = { EGO, S, F, SENSORS, applyState, EXPS: EXPS3, stat: SENSORS[0].stats, setLayout, W: () => W, bench: SENSORS[0].bench };
 }
 
 // src/main.js

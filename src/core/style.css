@@ -43,12 +43,12 @@ body{background:var(--bg);color:var(--fg);font:15px/1.45 var(--f-body);display:f
 .tb button.on{background:var(--fg);color:var(--surface)}
 #views{left:12px;bottom:12px}
 #modes{left:12px;bottom:52px}
-#drive{right:12px;top:12px}
+#drive{left:12px;bottom:92px}
 #drive button.on{background:var(--acc);color:var(--surface)}
 .seg{display:flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
 .seg button{border:0;border-right:1px solid var(--line);background:transparent;color:var(--fg);font:500 13px var(--f-body);padding:6px 11px;cursor:pointer}
 .seg button:last-child{border-right:0}.seg button.on{background:var(--fg);color:var(--surface)}
-.legend{position:absolute;right:12px;top:56px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;font:12px var(--f-mono);color:var(--muted);
+.legend{position:absolute;right:12px;bottom:136px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;font:12px var(--f-mono);color:var(--muted);
   background:color-mix(in srgb,var(--surface) 85%,transparent);padding:4px 8px;border-radius:5px;max-width:50%}
 .legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
 .legend .barc{width:90px;height:9px;border-radius:2px;display:inline-block;vertical-align:-1px;margin:0 4px}

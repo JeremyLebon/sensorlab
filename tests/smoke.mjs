@@ -40,6 +40,23 @@ const vx = await page.evaluate(() => window.__sim.S.vx);
 ok(vx > 5, `rijden: voertuig op x = ${vx.toFixed(1)} m`);
 await page.evaluate(() => window.__sim.applyState({world: 'street'}));
 await settle();
+// radar: kernuitspraken van de radarexperimenten (zie src/sensors/radar/experiments.js)
+const radar = set => page.evaluate(async s => { const sim = window.__sim; sim.applyState(s); await new Promise(r => setTimeout(r, 600));
+  await sim.SENSORS[0].whenIdle(); await new Promise(r => setTimeout(r, 300));
+  const res = sim.SENSORS[1].stats(), real = {}, ghost = {}, filt = {};
+  for (const d of res.dets) { const m = d.filtered ? filt : d.src === 'ghost' ? ghost : real; m[d.o.name] = (m[d.o.name] || 0) + 1; }
+  const lid = Object.fromEntries(sim.stat().cnt); return {real, ghost, filt, lid}; }, set);
+let r = await radar({world: 'farm', dust: true, dustD: 0.8, fog: 0.8, ped: {x: 12, y: 0.5}, lidar: {preset: 'vlp16', live: false}, radar: {preset: 'mrr'}});
+ok(r.real['Persoon (in het veld)'] >= 1 && r.lid['Persoon (in het veld)'] < 10, `radar ziet persoon in stof+mist (${r.real['Persoon (in het veld)'] || 0} det.), lidar zwak (${r.lid['Persoon (in het veld)']} ptn)`);
+r = await radar({ped: {x: 12, y: 1.2}, dog: {x: 12, y: 2.0}, lidar: {live: false}, radar: {preset: 'mrr'}});
+ok(!r.real['Hond (0,5 m)'] && r.real['Voetganger'] === 1, `hoekresolutie 5°: voetganger en hond smelten samen (${r.real['Voetganger']} det., hond ${r.real['Hond (0,5 m)'] || 0})`);
+r = await radar({ped: {x: 12, y: 1.2}, dog: {x: 12, y: 2.0}, lidar: {live: false}, radar: {preset: 'img'}});
+ok(r.real['Hond (0,5 m)'] >= 1 && r.real['Voetganger'] >= 1, 'beeldradar 1°: voetganger en hond apart');
+r = await radar({ped: {x: 45, y: 1.2}, lidar: {live: false}, radar: {preset: 'mrr'}});
+ok(!r.real['Voetganger'], 'voetganger op 45 m buiten bereik van de radar (mrr)');
+r = await radar({world: 'highway', lidar: {live: false}, radar: {preset: 'lrr', statFilter: true}});
+ok(!r.real['Vangrail (0,55–0,8 m)'] && r.filt['Vangrail (0,55–0,8 m)'] > 0, 'stilstandfilter verwijdert de vangrail');
+
 // worker en main thread moeten exact dezelfde puntenwolk geven (zelfde seed per kolom)
 const nW = await page.evaluate(() => window.__sim.SENSORS[0].workerCount());
 console.log(`  info workers: ${nW}`);

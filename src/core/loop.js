@@ -47,5 +47,5 @@ export function start(){
   setLayout(innerWidth<860?['world']:['world',...SENSORS.map(s=>s.views[0].id)]);
   requestAnimationFrame(frame);
   // testhaak (tests/smoke.mjs)
-  window.__sim={EGO,S,SENSORS,applyState,EXPS,stat:SENSORS[0].stats,setLayout,W:()=>W,bench:SENSORS[0].bench};
+  window.__sim={EGO,S,F,SENSORS,applyState,EXPS,stat:SENSORS[0].stats,setLayout,W:()=>W,bench:SENSORS[0].bench};
 }

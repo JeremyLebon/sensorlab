@@ -31,11 +31,12 @@ export function buildWorld(){
 }
 export function buildPrims(){
   const P=[];
-  for(const ob of W.objs){const dx=ob.dx;for(const p of ob.parts){
+  // pi = index van het onderdeel binnen het object (een box levert 4 segmenten met dezelfde pi)
+  for(const ob of W.objs){const dx=ob.dx;ob.parts.forEach((p,pi)=>{
     if(p.s==='box'){const c=Math.cos(p.yaw),s=Math.sin(p.yaw),pts=[[1,1],[-1,1],[-1,-1],[1,-1]].map(([a,b])=>[dx+p.cx+(a*p.lx/2)*c-(b*p.ly/2)*s,p.cy+(a*p.lx/2)*s+(b*p.ly/2)*c]);
-      for(let i=0;i<4;i++){const A=pts[i],B=pts[(i+1)%4];P.push({k:0,o:ob,x1:A[0],y1:A[1],x2:B[0],y2:B[1],z0:p.z0,z1:p.z1});}}
-    else if(p.s==='cyl')P.push({k:1,o:ob,cx:dx+p.cx,cy:p.cy,r:p.r,z0:p.z0,z1:p.z1});
-    else P.push({k:0,o:ob,x1:dx+p.x1,y1:p.y1,x2:dx+p.x2,y2:p.y2,z0:p.z0,z1:p.z1});}}
+      for(let i=0;i<4;i++){const A=pts[i],B=pts[(i+1)%4];P.push({k:0,o:ob,pi,x1:A[0],y1:A[1],x2:B[0],y2:B[1],z0:p.z0,z1:p.z1});}}
+    else if(p.s==='cyl')P.push({k:1,o:ob,pi,cx:dx+p.cx,cy:p.cy,r:p.r,z0:p.z0,z1:p.z1});
+    else P.push({k:0,o:ob,pi,x1:dx+p.x1,y1:p.y1,x2:dx+p.x2,y2:p.y2,z0:p.z0,z1:p.z1});});}
   W.prims=P;for(const f of onPrims)f();
 }
 /* wegmarkering: retroreflecterende verf → hogere reflectie dan asfalt (definitie per wereld) */

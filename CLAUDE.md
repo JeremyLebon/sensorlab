@@ -29,31 +29,43 @@ offline als IIFE met three inline, en een CDN-versie (ESM, three extern via een 
 - Experimenten: `set:{world, ped, speed, rain, objects, …, drive, view, layout, lidar:{preset, color, err, …}}`. `applyState` zet `S` terug op `BASE` en roept daarna `sensor.reset(set[id]||{})` op.
 - Let op bij het hernoemen: een lokale variabele met dezelfde naam als een import (bv. `L` = aantal lagen tegenover `L` = lidartoestand) geeft een TDZ-fout. Daarom staat `no-shadow` in eslint.
 
-**Sensor-interface** (`sensors/lidar/index.js`). `core/loop.js` roept per frame `update3d()` → `step(dt, now, force)` → `animate(dt)` → `render(layout)` op:
+**Sensor-interface** (`sensors/lidar/index.js`). `core/loop.js` roept per frame `update3d()` → `step(dt, now, force)` → `animate(dt)` → `render(vis)` op:
 
 ```js
 export default {
   id: 'lidar', label: 'Lidar',
   state,                     // eigen toestand (UI-sleutels "<id>.<key>")
   params, presets, experiments,
-  views: [{stage, renderer, camera}],   // eigen vensters; core/layout.js past de grootte aan
+  views: [{id, label, stage, renderer, camera}],   // eigen vensters; core/layout.js toont ze en past de grootte aan
   onChange(key) {}, disabled(key) {},   // UI-logica (presets, minimale montagehoogte, uitgeschakelde velden)
   reset(set) {},             // experiment instellen
   eye() {},                  // {x, h}: camerastandpunt "Vanuit sensor"
   init() {}, resetView() {},
-  update3d() {}, step(dt, now, force) {}, animate(dt) {}, render(layout) {},
+  update3d() {}, step(dt, now, force) {}, animate(dt) {}, render(vis) {},
   stats(), bench()
 }
 ```
 
-**Nog lidar-specifiek bij een tweede sensor**
-- `src/index.html`: het venster `#pcvStage` en de layoutknoppen ("Enkel puntenwolk") staan vast in de HTML. Die moeten per sensor gegenereerd worden.
-- Meettabellen en HUD: `metrics.js` schrijft rechtstreeks in `#hud`, `#objtab` en `#metrics`. Een tweede sensor heeft een eigen sectie nodig, of de HUD combineert de sensoren.
-- Ruis door een andere lidar (`S.interf`) staat in de omgeving: dat is bewust zo.
+**Vensters, layout en panelen**
+- Elke sensor maakt zijn eigen venster aan (een `section.stage.sview` met `data-pane="<view-id>"` in `#viewsBox`) en levert het in `views:[{id, label, stage, renderer, camera}]`.
+- `core/layout.js`: `VIS` = set van zichtbare vensters. De knoppen bovenaan zijn schakelaars (minstens één venster blijft zichtbaar). `setLayout([...])` wordt ook door experimenten gebruikt (`set.layout`). `render(vis)` krijgt die set.
+- `core/panels.js` maakt per sensor `#meas-<id>` (tabblad Meting) en `#hud-<id>` (HUD-regel); de sensor vult ze in `init()` en `metrics()`.
+- Het tabblad Sensor heeft een keuzeknop per sensor. De experimenten zijn per sensor gegroepeerd, de nummering loopt door (lidar 1–15, radar 16–22).
+
+**Radar** (`src/sensors/radar/`, 77 GHz FMCW, didactisch)
+- `model.js`: dieptebuffer in vakjes van 0,1°. Afscherming is evenredig met het deel van de verticale bundel dat een object bedekt (stoeprand nauwelijks, gevel volledig, auto op afstand gedeeltelijk). Glas, gewas en een haag hebben een doorlaatbaarheid `T`.
+- Signaal `σ·T·exp(−2αR)·kap/R⁴` tegen de drempel `10 m²/Rmax⁴`. Regen: α = 0,0012·regen per meter. Vuile radarkap: tot −15 dB. Mist en stof: geen invloed.
+- Compacte objecten: per object stukken van één hoekresolutie breed (dichtste punt, energie opgeteld). Uitgestrekte objecten (muren, vangrail): per vakje, met `rcs` per meter.
+- **Resolutie:** de sterkste eerst. Een terugkaatsing smelt samen met een detectie als hoek, afstand én radiale snelheid binnen de resolutie liggen. Er is geen vast celraster meer: dat gaf dubbele detecties op celgrenzen.
+- **Doppler:** `vr = (v_obj − v_eigen)·u`. Stilstaand als `|vr + v_eigen·u| < 0,5 m/s`, met een optioneel ACC-filter.
+- **Multipath:** spiegelbeeld via de dichtste spiegelende wand aan elke zijde (lange segmenten evenwijdig met x van objecten met `mirror`). Het signaal is 0,25 × (R/R_spook)⁴.
+- `rcs.js`: RCS per object **op naam**, zodat de wereldbestanden sensor-onafhankelijk blijven. Voor een nieuw object in een wereld: hier een regel toevoegen, anders geldt de standaard `ρ·2 m²`.
+- De radar rekent op de main thread (goedkoop: <5 ms), aan `freq` Hz tijdens het rijden.
+- **Experimentantwoorden:** gecontroleerd met `node tests/probe-radar.mjs '<set>' [vx] [seconden rijden]`. De kernuitspraken staan als test in `tests/smoke.mjs`. Wijzig je het radarmodel, controleer dan de antwoorden opnieuw.
 
 Een nieuwe wereld: `src/worlds/x.js` met `export default {label, build(h){… return W}, isMark(x,y), marks(dashes,solids,W)}`. Toevoegen aan `WORLDS` in `core/world.js`, aan de keuzelijst in `core/ui.js` (`CTRL.env`) en aan `WORLDSTART` in `core/state.js`.
 
-Een nieuwe sensor: map `src/sensors/<id>/` met een `index.js` volgens de interface, en toevoegen aan `SENSORS` in `core/loop.js`.
+Een nieuwe sensor: map `src/sensors/<id>/` met een `index.js` volgens de interface (zie lidar en radar), en toevoegen aan `SENSORS` in `core/sensors.js`.
 
 Wereldcoördinaten: x vooruit, y links, z omhoog (zoals ROS). Three.js gebruikt y omhoog: altijd via `V(x,y,z)`. Het puntenwolkvenster werkt in het voertuigframe (base_link).
 
@@ -88,6 +100,6 @@ Rekentijd op de main thread per volledige scan (headless Chrome, swiftshader): 1
 ## Open punten
 
 - Experimenten nalezen (Nobel).
-- Radar als eerste nieuwe sensor (sensorfusie: radar door stof en mist).
+- Radar-experimenten nalezen (Nobel). Volgende sensoren: ultrasoon, camera (hergebruikt de GPU-rendering), GNSS, IMU.
 - Eventueel: GitHub Pages als alternatief voor uploaden in Toledo; `/points` publiceren via rosbridge; koppeling met het CR0451-labo.
 
