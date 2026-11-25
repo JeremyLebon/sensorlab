@@ -10,13 +10,13 @@ import params from './controls.js';
 import EXPS from './experiments.js';
 import {PRESETS,SENSORKEYS} from './presets.js';
 import {mountX} from './model.js';
-import {fullScan,sweepStep,moveDynamicPoints,computeStats,updateRate,STAT} from './scan.js';
+import {fullScan,sweepStep,moveDynamicPoints,computeStats,updateRate,STAT,PB,scanIdle,whenIdle,setWorkers,workerCount,debugColMs} from './scan.js';
 import {updateBeams} from './pointcloud.js';
 import {updateSensorMesh} from './mount3d.js';
 import {metrics} from './metrics.js';
 import {pcvStage,pcvR,pcvScene,pcvCam,pcvCtl,pcvWorld,pcvEgo,pcvSensor,YAX,pcvView,setPcvView} from './pcview.js';
 
-let scanAcc=0,liveAcc=0,lastMetrics=0;
+let scanAcc=0,liveAcc=0,lastMetrics=0,needMetrics=false;
 // minimale montagehoogte boven de carrosserie
 function fixMount(){const min=L.mount==='front'?0.1:carTop(mountX())+0.08;if(L.mountH<min){L.mountH=+min.toFixed(2);toast('Op deze plaats: montagehoogte minstens '+nl(L.mountH,2)+' m');}}
 
@@ -52,10 +52,12 @@ export default {
   // meten: force = instelling of wereld gewijzigd → volledige scan
   step(dt,now,force){
     scanAcc+=dt;liveAcc+=dt;
-    if(force){fullScan(F.driving?S.speed:0);scanAcc=0;liveAcc=0;}
+    if(force){fullScan(F.driving?S.speed:0);scanAcc=0;liveAcc=0;needMetrics=true;}
     else if(F.driving){moveDynamicPoints(dt);if(L.type==='rot')sweepStep(dt);else if(scanAcc>=1/L.freq){fullScan(0);scanAcc=0;}updateRate(dt);}
     else if(L.live&&liveAcc>0.3){fullScan(0);liveAcc=0;}
-    if(force||((F.driving||L.live)&&now-lastMetrics>250)){computeStats();metrics();lastMetrics=now;}
+    // meettabellen: na een volledige scan zodra alle resultaten binnen zijn (workers), anders max. 4× per seconde
+    if(needMetrics&&scanIdle()){computeStats();metrics();lastMetrics=now;needMetrics=false;}
+    else if((F.driving||L.live)&&now-lastMetrics>250){computeStats();metrics();lastMetrics=now;}
   },
   animate(dt){
     if(pcvView==='drv'){pcvCam.position.set(-0.6,1.25,0);pcvCam.lookAt(30,0.6,0);}else pcvCtl.update();
@@ -63,5 +65,8 @@ export default {
   },
   render(layout){if(layout!=='world')pcvR.render(pcvScene,pcvCam);},
   stats:()=>STAT,
-  bench(){const t=performance.now();fullScan(0);computeStats();return performance.now()-t;}
+  async bench(){await whenIdle();const t=performance.now();fullScan(0);await whenIdle();computeStats();return performance.now()-t;},
+  setWorkers, workerCount, whenIdle,
+  debugBuffer:()=>({OID:Array.from(PB.OID),SRC:Array.from(PB.SRC),BL:Array.from(PB.BL),Z:Array.from(PB.Z),nL:PB.L}),
+  debugColMs:()=>debugColMs()
 };

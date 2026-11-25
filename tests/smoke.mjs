@@ -40,11 +40,32 @@ const vx = await page.evaluate(() => window.__sim.S.vx);
 ok(vx > 5, `rijden: voertuig op x = ${vx.toFixed(1)} m`);
 await page.evaluate(() => window.__sim.applyState({world: 'street'}));
 await settle();
-for (const p of ['vlp16', 'os64', 'hr128']) {
-  await page.evaluate(p => window.__sim.applyState({lidar: {preset: p}}), p);
+// worker en main thread moeten exact dezelfde puntenwolk geven (zelfde seed per kolom)
+const nW = await page.evaluate(() => window.__sim.SENSORS[0].workerCount());
+console.log(`  info workers: ${nW}`);
+// vergelijking straal per straal (OID, oorzaak, eigen wagen) na een volledige scan
+const snap = () => page.evaluate(async () => { const s = window.__sim.SENSORS[0];
+  await new Promise(r => setTimeout(r, 300)); await s.whenIdle(); await new Promise(r => setTimeout(r, 300)); await s.whenIdle();
+  const d = s.debugBuffer(); return {n: d.OID.filter((o, k) => o !== -2 && !d.BL[k]).length, key: d.OID.join(',') + '|' + d.SRC.join(',') + '|' + d.BL.join(',')}; });
+for (const set of [{lidar: {preset: 'vlp16', live: false}}, {world: 'highway', rain: 0.6, lidar: {preset: 'os64', err: {yaw: 2}, live: false}}, {world: 'farm', dust: true, lidar: {preset: 'vlp16', echo: 'last', live: false}}]) {
+  await page.evaluate(() => window.__sim.SENSORS[0].setWorkers(true));
+  await page.evaluate(s => window.__sim.applyState(s), set);
+  const a = await snap();
+  await page.evaluate(() => window.__sim.SENSORS[0].setWorkers(false));
+  const b = await snap();
+  ok(a.key === b.key, `worker = main thread, straal per straal (${JSON.stringify(set)}): ${a.n} punten` + (a.key === b.key ? '' : `  ≠ ${b.n}`));
+}
+for (const wk of [false, true]) {
+  await page.evaluate(w => window.__sim.SENSORS[0].setWorkers(w), wk);
+  await page.evaluate(() => window.__sim.applyState({world: 'street'}));
   await settle();
-  const ms = await page.evaluate(() => { let t = 0; for (let i = 0; i < 3; i++) t += window.__sim.bench(); return t / 3; });
-  console.log(`  info volledige scan ${p}: ${ms.toFixed(0)} ms`);
+  for (const p of ['vlp16', 'os64', 'hr128']) {
+    await page.evaluate(p => window.__sim.applyState({lidar: {preset: p}}), p);
+    await settle();
+    const ms = await page.evaluate(async () => { let t = 0; for (let i = 0; i < 3; i++) t += await window.__sim.bench(); return t / 3; });
+    const cm = await page.evaluate(() => window.__sim.SENSORS[0].debugColMs());
+    console.log(`  info volledige scan ${p} (${wk ? 'worker' : 'main thread'}): ${ms.toFixed(0)} ms doorlooptijd · ${(wk ? cm.worker : cm.main).toFixed(3)} ms rekentijd per kolom`);
+  }
 }
 ok(errors.length === 0, 'geen fouten in de console' + (errors.length ? ':\n    ' + errors.slice(0, 5).join('\n    ') : ''));
 await browser.close();

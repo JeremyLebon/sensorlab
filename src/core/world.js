@@ -39,4 +39,6 @@ export function buildPrims(){
   W.prims=P;for(const f of onPrims)f();
 }
 /* wegmarkering: retroreflecterende verf → hogere reflectie dan asfalt (definitie per wereld) */
+// enkel voor de lidar-worker: wereld (ground, dustC, prims) overnemen van de main thread
+export function setWorld(w){W=w;}
 export function isMark(x,y){const w=WORLDS[W.ground];return w&&w.isMark?w.isMark(x,y):false;}

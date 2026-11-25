@@ -8,7 +8,17 @@ const rd = p => readFileSync(new URL(p, import.meta.url), 'utf8');
 const pkg = JSON.parse(rd('./package.json'));
 const stamp = `sensorlab ${pkg.version} · build ${new Date().toISOString().slice(0, 10)}`;
 mkdirSync(new URL('./dist/', import.meta.url), {recursive: true});
-const common = {entryPoints: ['src/main.js'], bundle: true, write: false, legalComments: 'none', target: 'es2020', banner: {js: `/* ${stamp} */`}};
+const three = {'three/addons': './node_modules/three/examples/jsm'};
+
+// lidar-worker apart bundelen en als tekst aanbieden via de virtuele module 'virtual:lidar-worker'
+// (Toledo en file:// laden geen apart worker-bestand → Blob-URL in de pagina)
+const wres = await build({entryPoints: ['src/sensors/lidar/worker.js'], bundle: true, write: false, format: 'iife', minify: true, legalComments: 'none', target: 'es2020'});
+const workerText = wres.outputFiles[0].text;
+const workerPlugin = {name: 'lidar-worker', setup(b) {
+  b.onResolve({filter: /^virtual:lidar-worker$/}, a => ({path: a.path, namespace: 'lw'}));
+  b.onLoad({filter: /.*/, namespace: 'lw'}, () => ({contents: 'export default ' + JSON.stringify(workerText) + ';', loader: 'js'}));
+}};
+const common = {entryPoints: ['src/main.js'], bundle: true, write: false, legalComments: 'none', target: 'es2020', banner: {js: `/* ${stamp} */`}, plugins: [workerPlugin]};
 
 const shell = rd('./src/index.html');
 const cssText = rd('./src/core/style.css');
@@ -25,7 +35,7 @@ const fill = (s, map) => Object.entries(map).reduce((a, [k, v]) => a.split(k).jo
 const safe = js => js.replace(/<\/script/gi, '<\\/script');
 
 // 1. offline: alles (ook three) gebundeld tot één IIFE
-const res = await build({...common, format: 'iife', minify: true, alias: {'three/addons': './node_modules/three/examples/jsm'}});
+const res = await build({...common, format: 'iife', minify: true, alias: three});
 const offline = fill(shell, {
   '<!--@FONTS-->': `<!-- ${stamp} · offline-versie: geen externe bestanden -->`,
   '/*@CSS*/': cssText, '<!--@IMPORTMAP-->': '',
@@ -42,4 +52,4 @@ const cdn = fill(shell, {
 writeFileSync(new URL('./dist/sensorlab-cdn.html', import.meta.url), cdn);
 
 const kb = s => (Buffer.byteLength(s) / 1024).toFixed(0) + ' kB';
-console.log(`dist/sensorlab.html      ${kb(offline)}\ndist/sensorlab-cdn.html  ${kb(cdn)}`);
+console.log(`worker                   ${kb(workerText)}\ndist/sensorlab.html      ${kb(offline)}\ndist/sensorlab-cdn.html  ${kb(cdn)}`);

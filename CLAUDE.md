@@ -57,13 +57,27 @@ Een nieuwe sensor: map `src/sensors/<id>/` met een `index.js` volgens de interfa
 
 Wereldcoördinaten: x vooruit, y links, z omhoog (zoals ROS). Three.js gebruikt y omhoog: altijd via `V(x,y,z)`. Het puntenwolkvenster werkt in het voertuigframe (base_link).
 
-## Prestaties: volgorde
+## Prestaties
 
-1. **Web worker** voor de raycast (½ dag, 3–6×). In de offline build inline als Blob-URL.
-2. **GPU-lidar**: de scène vanuit de sensor renderen naar diepte-/ID-texturen (1–2 dagen, 10–100×). Nadeel: enkel het eerste raakpunt. Glas, meerdere echo's en stof vragen een extra pass of een statistische benadering. Herbruikbaar voor de camerasensor.
-3. **WebAssembly: niet doen** (1,5–3× op één kern, extra toolchain).
+**Web workers (af).**
+- `sensors/lidar/rays.js` is de rekenkern: kolommen meten, als zuivere functie zonder three.js of DOM. Hij draait op de main thread én in `sensors/lidar/worker.js`.
+- `build.mjs` bundelt de worker apart en biedt hem aan als tekst via de virtuele module `virtual:lidar-worker`. `scan.js` start hem als Blob-URL.
+- Pool: `hardwareConcurrency − 1` workers, maximaal 6.
+- **Fallback:** geen Worker beschikbaar, een fout bij het aanmaken of een `onerror` (bv. een CSP in Toledo die blob-workers verbiedt) → alles rekent op de main thread.
+- Elke kolom heeft een eigen RNG-seed (`seed ^ i·φ`), dus het resultaat hangt niet af van de verdeling. De rooktest controleert straal per straal dat worker en main thread identiek zijn (`debugBuffer`).
+- **Generaties:** `gen` stijgt bij een nieuwe buffer of een volledige scan. Resultaten van een oudere generatie worden genegeerd.
+- Punten op rijdend verkeer worden bij aankomst verschoven met `v · vertraging`.
+- De botsvormen gaan enkel mee naar een worker als ze veranderd zijn (`primVer`). In een dynamische wereld is dat elke scan.
+- **Sweep tijdens het rijden:** met workers is het budget `0,9 · dt / rekentijd per kolom` per worker, met maximaal 2 opdrachten per worker in de wachtrij. Zonder workers blijft het ±14 ms per frame.
+- **Metingen:** de tabellen komen pas na een volledige scan, als alle resultaten binnen zijn (`scanIdle`).
+- Gemeten in de testomgeving (2 kernen, software-rendering, dus 1 worker): bij rijden met 128 lagen van 1 naar 6 van de 10 Hz. Met 16 lagen daalt de frametijd van 50 naar 33 ms. Op een gewone pc met 4–8 kernen is de winst groter.
+- De doorlooptijd van één volledige scan in `npm test` is met een worker hoger, want het antwoord wacht op de volgende (trage) frame. De rekentijd per kolom is gelijk.
 
-Rekentijd per volledige scan (headless Chrome, swiftshader): 16 lagen ±20 ms, 64 lagen ±40 ms, 128 lagen ±100–170 ms. `npm test` drukt dit af.
+**Volgende stappen**
+1. **GPU-lidar**: de scène vanuit de sensor renderen naar diepte-/ID-texturen (1–2 dagen, 10–100×). Nadeel: enkel het eerste raakpunt. Glas, meerdere echo's en stof vragen een extra pass of een statistische benadering. Herbruikbaar voor de camerasensor.
+2. **WebAssembly: niet doen** (1,5–3× op één kern, extra toolchain).
+
+Rekentijd op de main thread per volledige scan (headless Chrome, swiftshader): 16 lagen ±20 ms, 64 lagen ±30–40 ms, 128 lagen ±120–170 ms. `npm test` drukt dit af voor beide modi.
 
 ## Model (didactisch vereenvoudigd)
 
@@ -74,6 +88,6 @@ Rekentijd per volledige scan (headless Chrome, swiftshader): 16 lagen ±20 ms, 6
 ## Open punten
 
 - Experimenten nalezen (Nobel).
-- Worker, daarna radar als eerste nieuwe sensor (sensorfusie: radar door stof en mist).
+- Radar als eerste nieuwe sensor (sensorfusie: radar door stof en mist).
 - Eventueel: GitHub Pages als alternatief voor uploaden in Toledo; `/points` publiceren via rosbridge; koppeling met het CR0451-labo.
 - Bekend klein lay-outpunt: bij smalle 3D-weergave overlapt de knoppenbalk "Camera / Persoon / Hond" de rijknoppen.

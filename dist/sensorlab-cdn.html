@@ -1325,6 +1325,53 @@ function measure(rng, ox, oy, oz, az, el) {
 }
 var mountX = () => MOUNTS[L.mount].x;
 
+// src/sensors/lidar/rays.js
+function allocOut(n) {
+  return { pos: new Float32Array(n * 3), Z: new Float32Array(n), SG: new Float32Array(n), LY: new Uint8Array(n), SRC: new Uint8Array(n), OID: new Int16Array(n), BL: new Uint8Array(n) };
+}
+function computeColumns(j, out) {
+  const nL = j.nL, els = j.els, H = L.mountH, mx = mountX(), yawE = L.err.yaw * D2R, pitE = L.err.pitch * D2R, th = sTh();
+  const cy = Math.cos(j.ayaw), sy = Math.sin(j.ayaw), cq = Math.cos(j.qyaw), sq = Math.sin(j.qyaw), rot = L.type === "rot";
+  const pa = out.pos;
+  for (let i = j.i0; i <= j.i1; i++) {
+    const rng = mulberry32((j.seed ^ Math.imul(i + 1, 2654435761)) >>> 0);
+    const azN = j.az0 + (i + 0.5) * j.step, azNr = azN * D2R, azR = azNr + yawE, dxR = Math.cos(azR), dyR = Math.sin(azR), cA = Math.cos(azNr), sA = Math.sin(azNr);
+    const sh = j.v && rot ? j.v * fmod(azN + 180, 360) / 360 / L.freq : 0;
+    const vx = j.ax + sh, ox = vx + mx * cy, oy = j.ay + mx * sy, qx = j.qx + (j.shiftQ ? sh : 0), qy = j.qy;
+    for (let jj = 0; jj < nL; jj++) {
+      const k = (i - j.i0) * nL + jj, elR = els[jj] + pitE * cA;
+      let ok = false;
+      out.BL[k] = 0;
+      if (selfBlock(mx, 0, H, dxR, dyR, Math.tan(elR))) out.BL[k] = 1;
+      else {
+        const m = measure(rng, ox, oy, H, azR + j.ayaw, elR);
+        if (m) {
+          const R = m.R + (L.noise > 0 ? gauss(rng) * L.noise : 0);
+          if (R >= 0.3) {
+            const elN = els[jj], hz = R * Math.cos(elN), z = H + L.err.h + R * Math.sin(elN);
+            const hx = mx + L.err.x + hz * cA, hy = hz * sA;
+            pa[k * 3] = qx + hx * cq - hy * sq;
+            pa[k * 3 + 1] = z;
+            pa[k * 3 + 2] = -(qy + hx * sq + hy * cq);
+            out.Z[k] = z;
+            out.SG[k] = Math.log10(Math.max(m.sig / th, 1));
+            out.LY[k] = jj;
+            out.SRC[k] = m.src;
+            out.OID[k] = m.o && m.o.idx !== void 0 ? m.o.idx : -1;
+            ok = true;
+          }
+        }
+      }
+      if (!ok) {
+        pa[k * 3] = 0;
+        pa[k * 3 + 1] = -1e5;
+        pa[k * 3 + 2] = 0;
+        out.OID[k] = -2;
+      }
+    }
+  }
+}
+
 // src/sensors/lidar/pointcloud.js
 import * as THREE4 from "three";
 var ptsGeo = new THREE4.BufferGeometry();
@@ -1434,13 +1481,76 @@ function updateBeams(dt) {
   hitGeo.attributes.position.needsUpdate = true;
 }
 
+// lw:virtual:lidar-worker
+var virtual_lidar_worker_default = '(()=>{var h={world:"street",rain:0,fog:0,dust:!1,dustD:.6,wet:!1,interf:!1,speed:8,objects:"full",ped:{x:12,y:1.2},dog:{x:7,y:-1.8},vx:0,vy:0};var vt=JSON.parse(JSON.stringify(h));var E=Math.PI/180;function Y(t){return function(){t|=0,t=t+1831565813|0;let e=Math.imul(t^t>>>15,1|t);return e=e+Math.imul(e^e>>>7,61|e)^e,((e^e>>>14)>>>0)/4294967296}}var R=(t,e)=>(t%e+e)%e;function Q(t){return Math.sqrt(-2*Math.log(1-t()))*Math.cos(2*Math.PI*t())}var _={label:"Straat",build({O:t,box:e,cyl:s,wall:f,car:a,person:n}){let r,o={ground:"street",lanes:[0,3.5],x0:-60,x1:110,roads:[[-5.75,7.75]],start:0,end:46,dust:{dx:10,dy:-.5,r:4.5},hud:[["Voetganger","voetganger"],["Hond (0,5 m)","hond"]]};r=t("Voetganger",.35,"#e2557a",{key:!0}),n(r,h.ped.x,h.ped.y),r=t("Hond (0,5 m)",.3,"#c98a4b",{key:!0}),e(r,h.dog.x,h.dog.y,.75,.28,0,.5,.4,"dog"),r.hx=h.dog.x,r.hy=h.dog.y,r=t("Witte auto",.7,"#f1f4f6",{key:!0}),a(r,16,-3.6,0),r=t("Zwarte auto (5 %)",.05,"#16191c",{key:!0}),a(r,25,4.6,Math.PI),r=t("Vrachtwagen-laadbak (vanaf 1,0 m)",.45,"#3d7cc9",{key:!0}),e(r,38,-3.4,6.5,2.4,1,3.6),r=t("Vrachtwagen-cabine en wielen",.45,"#2f5e98"),e(r,42.4,-3.4,2.2,2.4,.4,3.2);for(let c of[37.5,40.8])for(let i of[-2.4,-4.4])e(r,c,i,1,.3,0,1,0,"wheel");r=t("Slagboom (0,9\\u20131,0 m)",.6,"#e04848",{key:!0}),e(r,52,-.6,.1,7.6,.9,1),r=t("Slagboompaal",.5,"#cfd5da"),e(r,52,-4.8,.3,.3,0,1.1),r=t("Stoeprand (15 cm)",.25,"#9aa3ab",{key:!0}),f(r,-60,-5.9,110,-5.9,0,.15,.25),f(r,-60,7.9,110,7.9,0,.15,.25),r=t("Palen (\\xD8 12 cm)",.5,"#7fb03c",{key:!0});for(let c=-36;c<=100;c+=8)s(r,c+2,-7.2,.06,0,3.5);return r=t("Verkeersbord (retroreflecterend)",3,"#2a8fd6",{key:!0}),e(r,20,-7.6,.05,.8,1.7,2.4),r=t("Paal verkeersbord",.5,"#9aa3ab"),s(r,20,-7.6,.04,0,1.7),r=t("Glaswand bushokje",.08,"#8fc4ff",{glass:!0,key:!0}),f(r,22,9.4,29,9.4,0,2.5,.04),r=t("Bushokje (dak en zijkant)",.4,"#7b8794"),e(r,25.5,10.4,7.2,2.2,2.5,2.65),f(r,22,9.4,22,11.4,0,2.5,.08),r=t("Persoon achter glas",.35,"#e2557a",{key:!0}),n(r,25.5,10.6),r=t("Haag",.15,"#4f9a52",{key:!0}),e(r,-10,-10,8,1.4,0,1.3),r=t("Gebouw",.4,"#a7b0b8"),e(r,46,19,18,8,0,9),e(r,-26,16,14,8,0,7),e(r,8,17,12,7,0,6),r=t("Muur",.5,"#a7b0b8"),f(r,-60,-15,110,-15,0,2.5,.3),o},isMark(t,e){return Math.abs(e-1)<.07&&R(t,6)<3||Math.abs(e+5.45)<.07||Math.abs(e-7.45)<.07||t>30&&t<34&&e>-5.6&&e<7.6&&R(e+5.6,1)<.5},marks(t,e,s){for(let f=s.x0;f<s.x1;f+=6)t.push([f+1.5,1,3,.14]);e.push([-5.45,.14],[7.45,.14]);for(let f=-5.6;f<7.6;f+=1)t.push([32,f+.25,4,.5])}};var $={label:"Snelweg",build({O:t,box:e,cyl:s,wall:f,car:a,truck:n,person:r}){let o,c={ground:"highway",lanes:[-3.5,0,3.5],x0:-300,x1:1100,roads:[[-8.2,5.6],[6.3,17.6]],start:0,end:860,dust:{dx:12,dy:0,r:5},hud:[["Auto voor ons","auto voor ons"],["Verloren band (0,25 m)","verloren band"]]};o=t("Auto voor ons",.7,"#f1f4f6",{key:!0,v:29}),a(o,40,0,0),o=t("Zwarte auto (5 %)",.05,"#16191c",{key:!0,v:33}),a(o,14,3.5,0),o=t("Auto achter ons",.5,"#b3262b",{key:!0,v:30.5}),a(o,-26,0,0),o=t("Vrachtwagen met oplegger",.45,"#d9dde0",{key:!0,v:24}),n(o,70,-3.5),o=t("Motorrijder",.3,"#2d2f33",{key:!0,v:36}),e(o,-45,3.5,2.1,.75,0,1.5,0,!1),o.models.push({k:"moto",cx:-45,cy:3.5}),o.hx=-45,o.hy=3.5;for(let[i,p,b,m]of[[120,11.95,"#8c97a3",-31],[260,8.45,"#2b5aa8",-34],[360,15.45,"#e6e9ec",-28]])o=t("Tegenliggers",.6,b,{key:!0,v:m}),o.tid=i,a(o,i,p,Math.PI,b);o=t("Verloren band (0,25 m)",.08,"#1d1f22",{key:!0}),s(o,130,.2,.36,0,.25,"tire"),o.hx=130,o.hy=.2,o=t("Pechauto op pechstrook",.6,"#c7a12b",{key:!0}),a(o,330,-6.6,.05),o=t("Persoon op pechstrook",.35,"#ff7a1a",{key:!0}),r(o,h.ped.x,h.ped.y),o=t("Vangrail (0,55\\u20130,8 m)",.6,"#c3c9ce",{key:!0}),f(o,-300,-8.8,1100,-8.8,.55,.8,.08),f(o,-300,18.2,1100,18.2,.55,.8,.08),o=t("Vangrailpalen",.4,"#8d959c");for(let i=-120;i<=1100;i+=4)e(o,i,-8.9,.1,.1,0,.8);o=t("Middenberm (New Jersey, 0,85 m)",.35,"#c5c3bc",{key:!0}),e(o,400,5.95,1400,.6,0,.85),o=t("Hectometerpaaltjes (retro)",2,"#f2f4f5",{key:!0});for(let i=-200;i<=1100;i+=100)e(o,i,-9.3,.12,.12,0,1);o=t("Portiek met borden",.5,"#8d959c",{key:!0}),e(o,240,-10,.5,.5,0,7.2),e(o,240,19,.5,.5,0,7.2),e(o,240,4.5,.6,29.5,6.5,7.1),o=t("Borden boven de weg (retro)",3,"#1f6fb8",{key:!0});for(let i of[-3.5,0,3.5])e(o,239.6,i,.12,3.3,5.3,6.9);o=t("Brug (onderkant 5,4 m)",.35,"#b0b4b3",{key:!0}),e(o,520,4.5,12,56,5.4,6.4);for(let i of[-11.5,5.95,20])e(o,520,i,1.2,1.2,0,5.4);return o=t("Geluidsmuur",.3,"#8b9a86"),f(o,-300,-14,1100,-14,0,4,.3),c},isMark(t,e){for(let s of[-1.75,1.75,10.2,13.7])if(Math.abs(e-s)<.08&&R(t,12)<3)return!0;for(let s of[-5.25,5.25,6.75,17.15])if(Math.abs(e-s)<.1)return!0;return!1},marks(t,e,s){for(let f of[-1.75,1.75,10.2,13.7])for(let a=s.x0;a<s.x1;a+=12)t.push([a+1.5,f,3,.16]);e.push([-5.25,.2],[5.25,.2],[6.75,.2],[17.15,.2])}};var K={label:"Erf en akker",build({O:t,box:e,cyl:s,wall:f,person:a}){let n,r={ground:"farm",lanes:[0],x0:-40,x1:90,roads:[[-3,3]],start:0,end:40,dust:{dx:10,dy:0,r:5},hud:[["Persoon (in het veld)","persoon"],["Hond (0,5 m)","hond"]]};n=t("Persoon (in het veld)",.35,"#e2557a",{key:!0}),a(n,h.ped.x,h.ped.y),n=t("Hond (0,5 m)",.3,"#c98a4b",{key:!0}),e(n,h.dog.x,h.dog.y,.75,.28,0,.5,.4,"dog"),n.hx=h.dog.x,n.hy=h.dog.y,n=t("Ma\\xEFsrijen (0,8 m)",.2,"#6b9a3a",{key:!0});for(let o=0;o<12;o++)e(n,25,5+o*.75,40,.25,0,.8);n=t("Persoon tussen gewas",.35,"#e2557a",{key:!0}),a(n,22,8.4),n=t("Ronde balen",.3,"#d9b45a",{key:!0});for(let[o,c]of[[14,-6],[16,-6],[15,-7.7]])s(n,o,c,.75,0,1.5);n=t("Draadafsluiting (1,0 m)",.5,"#b9c0c6",{key:!0,thin:.003}),f(n,-30,-12,80,-12,.98,1.01,.01),f(n,-30,-12,80,-12,.48,.51,.01),n=t("Afsluitpalen (\\xD8 10 cm)",.3,"#8a6a45",{key:!0});for(let o=-30;o<=80;o+=5)s(n,o,-12,.05,0,1.2);n=t("Tractor",.4,"#2f8a3d",{key:!0}),e(n,32,-4.5,3.2,1.9,.6,1.6),e(n,31.5,-4.5,1.6,1.4,1.6,2.9);for(let[o,c,i]of[[30.7,-3.6,.8],[30.7,-5.4,.8],[33.3,-3.7,.5],[33.3,-5.3,.5]])s(n,o,c,i*.35,0,i*2,"twheel");n=t("Schuur",.4,"#a94f3c"),e(n,0,16,20,10,0,7),n=t("Silo",.6,"#c9ced2"),s(n,-16,12,3,0,12),n=t("Graanwagen (vanaf 1,1 m)",.4,"#d07a2a",{key:!0}),e(n,48,-4,5,2.3,1.1,3);for(let o of[47,49])for(let c of[-3,-5])e(n,o,c,1,.35,0,1.1,0,"wheel");return r},isMark(){return!1},marks(){}};var xt={street:_,highway:$,farm:K},T=null;var O=[];function tt(t){T=t}function et(t,e){let s=xt[T.ground];return s&&s.isMark?s.isMark(t,e):!1}var k={preset:"vlp16",type:"rot",hfov:360,hres:.2,layers:16,vfov:30,vcenter:0,rmax:100,freq:10,mount:"roofM",mountH:1.85,err:{yaw:0,pitch:0,h:0,x:0},echo:"first",noise:.02,deskew:!0,color:"height",psize:1,beams:!0,live:!1},Vt=JSON.parse(JSON.stringify(k));var rt=[{x0:-4.66,x1:0,y0:-.92,y1:.92,z0:.25,z1:.97},{x0:-3.88,x1:-1.33,y0:-.76,y1:.76,z0:.97,z1:1.43}];var ot={front:{x:.06,label:"Grille / voorbumper"},roofF:{x:-1.7,label:"Dak, boven voorruit"},roofM:{x:-2.55,label:"Dak, midden"}};var nt={name:"grond",rho:.2};function st(t,e,s,f,a,n){for(let r of rt){let o=0,c=1e9;if(Math.abs(f)<1e-12){if(t<r.x0||t>r.x1)continue}else{let x=(r.x0-t)/f,l=(r.x1-t)/f;x>l&&([x,l]=[l,x]),o=Math.max(o,x),c=Math.min(c,l)}if(Math.abs(a)<1e-12){if(e<r.y0||e>r.y1)continue}else{let x=(r.y0-e)/a,l=(r.y1-e)/a;x>l&&([x,l]=[l,x]),o=Math.max(o,x),c=Math.min(c,l)}if(n<-1e-9&&(c=Math.min(c,-s/n)),c<=o)continue;let i=s+o*n,p=s+c*n,b=Math.min(i,p);if(Math.max(i,p)>=r.z0&&b<=r.z1)return!0}return!1}var z=new Float64Array(96),D=new Array(96),P=720,C=2*Math.PI,N=null;O.push(()=>{N=null});function Mt(t,e,s){let f=s.x2-s.x1,a=s.y2-s.y1,n=f*f+a*a,r=n>0?((t-s.x1)*f+(e-s.y1)*a)/n:0;return r=Math.max(0,Math.min(1,r)),Math.hypot(s.x1+r*f-t,s.y1+r*a-e)}function at(t,e,s,f){let a=new Array(P);for(let n=0;n<P;n++)a[n]=[];for(let n of T.prims){let r,o,c;if(n.k===0){if(c=Mt(t,e,n),c>f)continue;let m=Math.atan2(n.y1-e,n.x1-t),x=Math.atan2(n.y2-e,n.x2-t),l=R(x-m+Math.PI,C)-Math.PI;r=l>=0?m:x,o=Math.abs(l)}else{let m=n.cx-t,x=n.cy-e,l=Math.hypot(m,x);if(c=Math.max(0,l-n.r),c>f)continue;let d=l>n.r+1e-6?Math.asin(n.r/l):Math.PI;r=Math.atan2(x,m)-d,o=2*d}let i=c>.001?Math.atan((s+.25)/c):Math.PI;if(r-=i,o+=2*i,o>=C){for(let m=0;m<P;m++)a[m].push(n);continue}let p=Math.floor(R(r+Math.PI,C)/C*P),b=Math.ceil(o/C*P)+1;for(let m=0;m<b;m++)a[(p+m)%P].push(n)}N=a}function gt(t,e,s,f){let a=T.dustC,n=t-a.cx,r=e-a.cy,o=n*s+r*f,c=n*n+r*r-a.r*a.r,i=o*o-c;if(i<0)return null;let p=Math.sqrt(i),b=Math.max(-o-p,0),m=-o+p;return m>b?[b,m]:null}function kt(t,e,s,f,a,n){let r=Math.cos(a),o=Math.sin(a),c=Math.tan(n),i=Math.cos(n),p=0,b=N?N[Math.floor(R(a+Math.PI,C)/C*P)%P]:T.prims;for(let u of b){let M;if(u.k===0){let y=u.x2-u.x1,g=u.y2-u.y1,S=r*g-o*y;if(S>-1e-12&&S<1e-12)continue;let A=u.x1-e,B=u.y1-s;if(M=(A*g-B*y)/S,M<.05)continue;let q=(A*o-B*r)/S;if(q<0||q>1)continue}else{let y=e-u.cx,g=s-u.cy,S=y*r+g*o,A=y*y+g*g-u.r*u.r,B=S*S-A;if(B<0||(M=-S-Math.sqrt(B),M<.05))continue}let v=f+M*c;if(!(v<u.z0||v>u.z1)&&(z[p]=M,D[p]=u.o,p++,p>92))break}c<-1e-6&&(z[p]=-f/c,D[p]=nt,p++);for(let u=1;u<p;u++){let M=z[u],v=D[u],y=u-1;for(;y>=0&&z[y]>M;)z[y+1]=z[y],D[y+1]=D[y],y--;z[y+1]=M,D[y+1]=v}let m=1,x=-1,l=null,d=!1;for(let u=0;u<p;u++){let M=D[u];if(M.glass){if(t()<.85){m*=.8;continue}d=!0}x=z[u],l=M;break}return{dx:r,dy:o,cE:i,hT:x,hO:l,trans:m,glassHit:d}}var bt=()=>h.fog*.06+h.rain*.012,V=()=>.1/(k.rmax*k.rmax);function ft(t,e,s,f,a,n){let r=kt(t,e,s,f,a,n),o=bt(),c=V(),i=[],p=h.dust?gt(e,s,r.dx,r.dy):null,b=h.dustD*.12;if(r.hO){let d=r.hT/r.cE,u=r.hO.rho,M=1;if(r.hO===nt){M=0;let g=Math.abs(Math.sin(n));et(e+r.hT*r.dx,s+r.hT*r.dy)?(M=7,u=(h.wet?.25:.6)*Math.sqrt(g)):u=(h.wet?.02:T.ground==="farm"?.15:.2)*g}r.glassHit&&(u=.08,M=2),r.hO.thin&&(u*=Math.min(1,r.hO.thin/(.003*d+.008)));let v=1;if(p){let g=Math.max(0,Math.min(p[1],r.hT)-p[0]);v=Math.exp(-2*b*g/r.cE)}let y=u*r.trans*Math.exp(-2*o*d)*v/(d*d);y>=c&&d>=.3&&i.push({R:d,sig:y,src:M,o:r.hO})}let m=i.length?i[0].R:1e9,x=(d,u,M,v,y)=>{if(d<=0)return;let g=v-Math.log(1-t())/d;if(g>=y||g>=m||g<.3)return;let S=u*Math.exp(-2*o*g)/(g*g);S>=c&&i.push({R:g,sig:S,src:M,o:null})};if(h.rain>0&&x(h.rain*.012,.0015,3,0,1e9),h.fog>0&&x(h.fog*.03,.002,4,0,1e9),p&&x(h.dustD*.5,.006,5,p[0]/r.cE,p[1]/r.cE),h.interf&&t()<.004&&i.push({R:1+t()*Math.min(k.rmax*.6,40),sig:c*3,src:6,o:null}),!i.length)return null;let l=i[0];if(k.echo==="first")for(let d of i)d.R<l.R&&(l=d);else if(k.echo==="last")for(let d of i)d.R>l.R&&(l=d);else for(let d of i)d.sig>l.sig&&(l=d);return l}var it=()=>ot[k.mount].x;function ct(t){return{pos:new Float32Array(t*3),Z:new Float32Array(t),SG:new Float32Array(t),LY:new Uint8Array(t),SRC:new Uint8Array(t),OID:new Int16Array(t),BL:new Uint8Array(t)}}var ut=t=>[t.pos.buffer,t.Z.buffer,t.SG.buffer,t.LY.buffer,t.SRC.buffer,t.OID.buffer,t.BL.buffer];function lt(t,e){let s=t.nL,f=t.els,a=k.mountH,n=it(),r=k.err.yaw*E,o=k.err.pitch*E,c=V(),i=Math.cos(t.ayaw),p=Math.sin(t.ayaw),b=Math.cos(t.qyaw),m=Math.sin(t.qyaw),x=k.type==="rot",l=e.pos;for(let d=t.i0;d<=t.i1;d++){let u=Y((t.seed^Math.imul(d+1,2654435761))>>>0),M=t.az0+(d+.5)*t.step,v=M*E,y=v+r,g=Math.cos(y),S=Math.sin(y),A=Math.cos(v),B=Math.sin(v),q=t.v&&x?t.v*R(M+180,360)/360/k.freq:0,ht=t.ax+q,dt=ht+n*i,pt=t.ay+n*p,mt=t.qx+(t.shiftQ?q:0),yt=t.qy;for(let I=0;I<s;I++){let w=(d-t.i0)*s+I,G=f[I]+o*A,F=!1;if(e.BL[w]=0,st(n,0,a,g,S,Math.tan(G)))e.BL[w]=1;else{let L=ft(u,dt,pt,a,y+t.ayaw,G);if(L){let H=L.R+(k.noise>0?Q(u)*k.noise:0);if(H>=.3){let j=f[I],U=H*Math.cos(j),J=a+k.err.h+H*Math.sin(j),Z=n+k.err.x+U*A,X=U*B;l[w*3]=mt+Z*b-X*m,l[w*3+1]=J,l[w*3+2]=-(yt+Z*m+X*b),e.Z[w]=J,e.SG[w]=Math.log10(Math.max(L.sig/c,1)),e.LY[w]=I,e.SRC[w]=L.src,e.OID[w]=L.o&&L.o.idx!==void 0?L.o.idx:-1,F=!0}}}F||(l[w*3]=0,l[w*3+1]=-1e5,l[w*3+2]=0,e.OID[w]=-2)}}}function wt(t){let e=[];for(let a of t.objs)e[a.idx]=a;let s=t.prims,f=[];for(let a=0;a<s.length;a+=8){let n=e[s[a+1]];s[a]===0?f.push({k:0,o:n,x1:s[a+2],y1:s[a+3],x2:s[a+4],y2:s[a+5],z0:s[a+6],z1:s[a+7]}):f.push({k:1,o:n,cx:s[a+2],cy:s[a+3],r:s[a+4],z0:s[a+6],z1:s[a+7]})}return{ground:t.ground,dustC:t.dustC,objs:e,prims:f}}var W=null;self.onmessage=t=>{let e=t.data,s=performance.now();Object.assign(h,e.S),Object.assign(k,e.L),e.world.prims&&(W=wt(e.world)),W.dustC=e.world.dustC,tt(W),e.bin&&at(e.bin.ox,e.bin.oy,e.bin.margin,e.bin.rc);let f=(e.job.i1-e.job.i0+1)*e.job.nL,a=ct(f);lt(e.job,a),self.postMessage({job:e.job,out:a,ms:performance.now()-s},ut(a))};})();\n';
+
 // src/sensors/lidar/scan.js
 var PB = null;
 var STAT = {};
+var effHz = 0;
 var sweepAz = -180;
 var revVx = 0;
 var revVy = 0;
 var revYaw = 0;
+var sweepDone = 0;
+var effT = 0;
+var colMs = 0.05;
+var colMsW = 0.05;
+var gen = 0;
+var primVer = 0;
+var inflight = 0;
+var idleWaiters = [];
+onPrims.push(() => {
+  primVer++;
+});
+var pool = null;
+var useWorkers = true;
+function getPool() {
+  if (pool) return pool;
+  pool = [];
+  if (typeof Worker === "undefined" || !virtual_lidar_worker_default) return pool;
+  try {
+    const url = URL.createObjectURL(new Blob([virtual_lidar_worker_default], { type: "text/javascript" }));
+    const n = Math.max(1, Math.min(6, (navigator.hardwareConcurrency || 2) - 1));
+    for (let i = 0; i < n; i++) {
+      const w = new Worker(url);
+      w.busy = 0;
+      w.ver = -1;
+      w.onmessage = onResult;
+      w.onerror = onWorkerError;
+      pool.push(w);
+    }
+  } catch {
+    pool = [];
+  }
+  return pool;
+}
+function onWorkerError(e) {
+  if (e && e.preventDefault) e.preventDefault();
+  for (const w of pool) w.terminate();
+  pool = [];
+  useWorkers = false;
+  inflight = 0;
+  F.dirty = true;
+  flushIdle();
+}
+var workersOn = () => useWorkers && getPool().length > 0;
+function setWorkers(on) {
+  useWorkers = !!on;
+  F.dirty = true;
+}
+function workerCount() {
+  return workersOn() ? pool.length : 0;
+}
+function flushIdle() {
+  if (inflight === 0) {
+    const a = idleWaiters;
+    idleWaiters = [];
+    for (const f of a) f();
+  }
+}
+var scanIdle = () => inflight === 0;
+var whenIdle = () => inflight === 0 ? Promise.resolve() : new Promise((r) => idleWaiters.push(r));
 function rcull() {
   return Math.min(effRange(3) * 1.05 + 5, 2e3);
 }
@@ -1450,83 +1560,118 @@ function ensureBuffer() {
     PB.els = els;
     return;
   }
+  gen++;
   PB = { sig, els, L: nL, nAz, N, az0: L.hfov >= 360 ? -180 : -L.hfov / 2, step: L.hfov / nAz, Z: new Float32Array(N), SG: new Float32Array(N), LY: new Uint8Array(N), SRC: new Uint8Array(N), OID: new Int16Array(N).fill(-2), BL: new Uint8Array(N) };
   resizePoints(N);
 }
-var RNG = mulberry32(12345);
-var colMs = 0.05;
-var colCount = 0;
-var sweepDone = 0;
-var effT = 0;
-var effHz = 0;
-function computeColumn(i, vx, vy, yaw, qx, qy, qyaw) {
-  colCount++;
-  const H = L.mountH, mx = mountX(), yawE = L.err.yaw * D2R, pitE = L.err.pitch * D2R, th = sTh(), nL = PB.L, els = PB.els;
-  const azN = PB.az0 + (i + 0.5) * PB.step, azNr = azN * D2R, azR = azNr + yawE, dxR = Math.cos(azR), dyR = Math.sin(azR), cA = Math.cos(azNr), sA = Math.sin(azNr);
-  const cy = Math.cos(yaw), sy = Math.sin(yaw), ox = vx + mx * cy, oy = vy + mx * sy, cq = Math.cos(qyaw), sq = Math.sin(qyaw);
-  const pa = ptsGeo.attributes.position.array;
-  for (let j = 0; j < nL; j++) {
-    const k = i * nL + j, elR = els[j] + pitE * cA;
-    let ok = false;
-    PB.BL[k] = 0;
-    if (selfBlock(mx, 0, H, dxR, dyR, Math.tan(elR))) PB.BL[k] = 1;
-    else {
-      const m = measure(RNG, ox, oy, H, azR + yaw, elR);
-      if (m) {
-        const R = m.R + (L.noise > 0 ? gauss(RNG) * L.noise : 0);
-        if (R >= 0.3) {
-          const elN = els[j], hz = R * Math.cos(elN), z = H + L.err.h + R * Math.sin(elN);
-          const hx = mx + L.err.x + hz * cA, hy = hz * sA;
-          pa[k * 3] = qx + hx * cq - hy * sq;
-          pa[k * 3 + 1] = z;
-          pa[k * 3 + 2] = -(qy + hx * sq + hy * cq);
-          PB.Z[k] = z;
-          PB.SG[k] = Math.log10(Math.max(m.sig / th, 1));
-          PB.LY[k] = j;
-          PB.SRC[k] = m.src;
-          PB.OID[k] = m.o && m.o.idx !== void 0 ? m.o.idx : -1;
-          colorSlot(k);
-          ok = true;
-        }
+function apply(job, out) {
+  const nL = job.nL, base = job.i0 * nL, n = (job.i1 - job.i0 + 1) * nL, pa = ptsGeo.attributes.position.array;
+  pa.set(out.pos, base * 3);
+  PB.Z.set(out.Z, base);
+  PB.SG.set(out.SG, base);
+  PB.LY.set(out.LY, base);
+  PB.SRC.set(out.SRC, base);
+  PB.OID.set(out.OID, base);
+  PB.BL.set(out.BL, base);
+  const lag = (performance.now() - job.t0) / 1e3;
+  if (W.dynamic && lag > 0) {
+    const objs = W.objs;
+    for (let k = base; k < base + n; k++) {
+      const id = PB.OID[k];
+      if (id >= 0) {
+        const v = objs[id] && objs[id].v;
+        if (v) pa[k * 3] += v * lag;
       }
     }
-    if (!ok) {
-      pa[k * 3 + 1] = -1e5;
-      PB.OID[k] = -2;
-    }
   }
+  for (let k = base; k < base + n; k++) if (PB.OID[k] !== -2) colorSlot(k);
+  markPts();
 }
-function prepScan(margin) {
+function onResult(e) {
+  const { job, out, ms } = e.data, w = e.target;
+  w.busy--;
+  inflight--;
+  const nc = job.i1 - job.i0 + 1;
+  if (nc > 0) colMsW = 0.8 * colMsW + 0.2 * ms / nc;
+  if (job.gen === gen && PB && job.nL === PB.L) apply(job, out);
+  flushIdle();
+}
+function prepare(margin) {
   if (W.dynamic) buildPrims();
   W.dustC = { cx: S.vx + W.dust.dx, cy: W.dust.dy, r: W.dust.r };
-  const mx = mountX();
-  buildBins(S.vx + mx * Math.cos(EGO.yaw), S.vy + mx * Math.sin(EGO.yaw), margin, rcull());
+  const mx = mountX(), bin = { ox: S.vx + mx * Math.cos(EGO.yaw), oy: S.vy + mx * Math.sin(EGO.yaw), margin, rc: rcull() };
+  if (!workersOn()) buildBins(bin.ox, bin.oy, bin.margin, bin.rc);
+  return bin;
 }
+function packPrims() {
+  const P = W.prims, f = new Float64Array(P.length * 8);
+  P.forEach((p, i) => {
+    const o = i * 8;
+    f[o] = p.k;
+    f[o + 1] = p.o.idx;
+    if (p.k === 0) {
+      f[o + 2] = p.x1;
+      f[o + 3] = p.y1;
+      f[o + 4] = p.x2;
+      f[o + 5] = p.y2;
+    } else {
+      f[o + 2] = p.cx;
+      f[o + 3] = p.cy;
+      f[o + 4] = p.r;
+    }
+    f[o + 6] = p.z0;
+    f[o + 7] = p.z1;
+  });
+  return { prims: f, objs: W.objs.map((o) => ({ idx: o.idx, rho: o.rho, glass: o.glass, thin: o.thin || 0 })) };
+}
+function dispatch(base, i0, i1, bin, parts) {
+  const t0 = performance.now();
+  if (!workersOn()) {
+    const job = { ...base, i0, i1, gen, t0 }, out = allocOut((i1 - i0 + 1) * base.nL);
+    computeColumns(job, out);
+    apply(job, out);
+    const nc = i1 - i0 + 1;
+    if (nc > 0) colMs = 0.8 * colMs + 0.2 * (performance.now() - t0) / nc;
+    return;
+  }
+  const cnt = i1 - i0 + 1, np = Math.max(1, Math.min(parts, Math.ceil(cnt / 8)));
+  let packed = null;
+  for (let p = 0; p < np; p++) {
+    const a = i0 + Math.floor(cnt * p / np), b = i0 + Math.floor(cnt * (p + 1) / np) - 1;
+    if (b < a) continue;
+    const w = pool.reduce((m, x) => x.busy < m.busy ? x : m, pool[0]);
+    const world = { ground: W.ground, dustC: W.dustC };
+    if (w.ver !== primVer) {
+      packed = packed || packPrims();
+      Object.assign(world, packed);
+      w.ver = primVer;
+    }
+    w.busy++;
+    inflight++;
+    w.postMessage({ job: { ...base, i0: a, i1: b, gen, t0 }, S: { rain: S.rain, fog: S.fog, dust: S.dust, dustD: S.dustD, wet: S.wet, interf: S.interf }, L, world, bin });
+  }
+}
+var jobBase = () => ({ nL: PB.L, az0: PB.az0, step: PB.step, els: PB.els });
 function fullScan(v) {
   ensureBuffer();
-  RNG = mulberry32(L.live || F.driving ? Math.random() * 1e9 | 0 : 12345);
-  prepScan(v / L.freq * 1.5 + 1);
-  for (let i = 0; i < PB.nAz; i++) {
-    const azN = PB.az0 + (i + 0.5) * PB.step;
-    const t = L.type === "rot" ? fmod(azN + 180, 360) / 360 / L.freq : 0, sh = v * t;
-    computeColumn(i, S.vx + sh, S.vy, EGO.yaw, S.vx + (L.deskew ? sh : 0), S.vy, EGO.yaw);
-  }
+  gen++;
+  const seed = L.live || F.driving ? Math.random() * 4294967296 >>> 0 : 12345, bin = prepare(v / L.freq * 1.5 + 1);
+  const base = { ...jobBase(), ax: S.vx, ay: S.vy, ayaw: EGO.yaw, qx: S.vx, qy: S.vy, qyaw: EGO.yaw, v, shiftQ: L.deskew, seed };
+  dispatch(base, 0, PB.nAz - 1, bin, workersOn() ? pool.length : 1);
   sweepAz = -180;
   revVx = S.vx;
   revVy = S.vy;
   revYaw = EGO.yaw;
-  markPts();
 }
 function sweepStep(dt) {
   ensureBuffer();
-  RNG = mulberry32(Math.random() * 1e9 | 0);
-  prepScan(1);
-  const maxCols = Math.max(4, Math.floor(14 / Math.max(colMs, 1e-4)));
-  let adv = Math.min(360, 360 * L.freq * dt, maxCols * PB.step * 1.0001);
+  const wk = workersOn();
+  if (wk && inflight >= 2 * pool.length) return;
+  const bin = prepare(1), seed = Math.random() * 4294967296 >>> 0;
+  const maxCols = wk ? Math.floor(pool.length * 0.9 * dt * 1e3 / Math.max(colMsW, 1e-4)) : Math.floor(14 / Math.max(colMs, 1e-4));
+  const adv = Math.min(360, 360 * L.freq * dt, Math.max(4, maxCols) * PB.step * 1.0001);
   sweepDone += adv;
-  const tc0 = performance.now(), nc0 = colCount;
-  let a = sweepAz, b = a + adv;
-  const segs = b <= 180 ? [[a, b]] : [[a, 180], null, [-180, b - 360]];
+  const a = sweepAz, b = a + adv, segs = b <= 180 ? [[a, b]] : [[a, 180], null, [-180, b - 360]];
   for (const sg of segs) {
     if (!sg) {
       revVx = S.vx;
@@ -1535,15 +1680,11 @@ function sweepStep(dt) {
       continue;
     }
     const i0 = Math.max(0, Math.floor((sg[0] - PB.az0) / PB.step - 0.5) + 1), i1 = Math.min(PB.nAz - 1, Math.floor((sg[1] - PB.az0) / PB.step - 0.5));
-    for (let i = i0; i <= i1; i++) {
-      if (L.deskew) computeColumn(i, S.vx, S.vy, EGO.yaw, S.vx, S.vy, EGO.yaw);
-      else computeColumn(i, S.vx, S.vy, EGO.yaw, revVx, revVy, revYaw);
-    }
+    if (i1 < i0) continue;
+    const base = L.deskew ? { ...jobBase(), ax: S.vx, ay: S.vy, ayaw: EGO.yaw, qx: S.vx, qy: S.vy, qyaw: EGO.yaw, v: 0, seed } : { ...jobBase(), ax: S.vx, ay: S.vy, ayaw: EGO.yaw, qx: revVx, qy: revVy, qyaw: revYaw, v: 0, seed };
+    dispatch(base, i0, i1, bin, wk ? pool.length : 1);
   }
   sweepAz = b > 180 ? b - 360 : b;
-  markPts();
-  const nc = colCount - nc0;
-  if (nc > 0) colMs = 0.8 * colMs + 0.2 * (performance.now() - tc0) / nc;
 }
 function moveDynamicPoints(dt) {
   if (!PB || !W.dynamic) return;
@@ -1589,6 +1730,7 @@ function computeStats() {
   }
   STAT = { nAz: PB.nAz, L: PB.L, N: PB.N, n, blocked, cnt };
 }
+var debugColMs = () => ({ main: colMs, worker: colMsW });
 
 // src/sensors/lidar/mount3d.js
 import * as THREE5 from "three";
@@ -1749,6 +1891,7 @@ $("pcvFs").addEventListener("click", () => {
 var scanAcc = 0;
 var liveAcc = 0;
 var lastMetrics = 0;
+var needMetrics = false;
 function fixMount() {
   const min = L.mount === "front" ? 0.1 : carTop(mountX()) + 0.08;
   if (L.mountH < min) {
@@ -1817,6 +1960,7 @@ var lidar_default = {
       fullScan(F.driving ? S.speed : 0);
       scanAcc = 0;
       liveAcc = 0;
+      needMetrics = true;
     } else if (F.driving) {
       moveDynamicPoints(dt);
       if (L.type === "rot") sweepStep(dt);
@@ -1829,7 +1973,12 @@ var lidar_default = {
       fullScan(0);
       liveAcc = 0;
     }
-    if (force || (F.driving || L.live) && now - lastMetrics > 250) {
+    if (needMetrics && scanIdle()) {
+      computeStats();
+      metrics();
+      lastMetrics = now;
+      needMetrics = false;
+    } else if ((F.driving || L.live) && now - lastMetrics > 250) {
       computeStats();
       metrics();
       lastMetrics = now;
@@ -1846,12 +1995,19 @@ var lidar_default = {
     if (layout !== "world") pcvR.render(pcvScene, pcvCam);
   },
   stats: () => STAT,
-  bench() {
+  async bench() {
+    await whenIdle();
     const t = performance.now();
     fullScan(0);
+    await whenIdle();
     computeStats();
     return performance.now() - t;
-  }
+  },
+  setWorkers,
+  workerCount,
+  whenIdle,
+  debugBuffer: () => ({ OID: Array.from(PB.OID), SRC: Array.from(PB.SRC), BL: Array.from(PB.BL), Z: Array.from(PB.Z), nL: PB.L }),
+  debugColMs: () => debugColMs()
 };
 
 // src/core/sensors.js
