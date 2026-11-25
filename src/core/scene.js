@@ -1,41 +1,48 @@
 /* core/scene.js — hoofdscene: renderer, licht, grond, wegen, wereldobjecten, eigen wagen */
-const stage=$('stage');
-const renderer=new THREE.WebGLRenderer({antialias:true});
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+import {$} from './util.js';
+import {S} from './state.js';
+import {CARC} from './vehicle.js';
+import {W,WORLDS} from './world.js';
+import {V,css,M,buildCar,buildTruck,buildMoto} from './models3d.js';
+export const stage=$('stage');
+export const renderer=new THREE.WebGLRenderer({antialias:true});
 renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
 stage.prepend(renderer.domElement);
 $('loading').remove();
-const scene=new THREE.Scene();
-const camera=new THREE.PerspectiveCamera(50,1,0.05,1200);
-const controls=new OrbitControls(camera,renderer.domElement);
+export const scene=new THREE.Scene();
+export const camera=new THREE.PerspectiveCamera(50,1,0.05,1200);
+export const controls=new OrbitControls(camera,renderer.domElement);
 controls.enableDamping=true;controls.maxPolarAngle=Math.PI*0.495;
 scene.add(new THREE.HemisphereLight(0xffffff,0x667766,1.5));
-const sun=new THREE.DirectionalLight(0xffffff,1.7);sun.position.set(-30,60,25);scene.add(sun);
-const groundMat=new THREE.MeshStandardMaterial({roughness:1,depthWrite:false});
-const roadMat=new THREE.MeshStandardMaterial({roughness:0.95,metalness:0,depthWrite:false});
-const markMat=new THREE.MeshBasicMaterial({color:0xf4f4ee,depthWrite:false});
-const ground=new THREE.Mesh(new THREE.PlaneGeometry(3000,400),groundMat);ground.rotation.x=-Math.PI/2;ground.position.y=-0.012;ground.renderOrder=-3;scene.add(ground);
-const grid=new THREE.GridHelper(400,80,0x888888,0x888888);grid.material.opacity=0.1;grid.material.transparent=true;grid.material.depthWrite=false;grid.renderOrder=-2;scene.add(grid);
-let roadGroup=new THREE.Group();scene.add(roadGroup);
-function themeColors(){scene.background=new THREE.Color(css('--sky'));if(scene.fog)scene.fog.color=new THREE.Color(css('--sky'));
+export const sun=new THREE.DirectionalLight(0xffffff,1.7);sun.position.set(-30,60,25);scene.add(sun);
+export const groundMat=new THREE.MeshStandardMaterial({roughness:1,depthWrite:false});
+export const roadMat=new THREE.MeshStandardMaterial({roughness:0.95,metalness:0,depthWrite:false});
+export const markMat=new THREE.MeshBasicMaterial({color:0xf4f4ee,depthWrite:false});
+export const ground=new THREE.Mesh(new THREE.PlaneGeometry(3000,400),groundMat);ground.rotation.x=-Math.PI/2;ground.position.y=-0.012;ground.renderOrder=-3;scene.add(ground);
+export const grid=new THREE.GridHelper(400,80,0x888888,0x888888);grid.material.opacity=0.1;grid.material.transparent=true;grid.material.depthWrite=false;grid.renderOrder=-2;scene.add(grid);
+export let roadGroup=new THREE.Group();scene.add(roadGroup);
+export function themeColors(){scene.background=new THREE.Color(css('--sky'));if(scene.fog)scene.fog.color=new THREE.Color(css('--sky'));
   groundMat.color.set(W&&W.ground==='farm'?(matchMedia('(prefers-color-scheme: dark)').matches?'#2a2418':'#cbbd9c'):css('--floor'));
   roadMat.color.set(css('--road'));if(S.wet)roadMat.color.multiplyScalar(0.55);
   markMat.color.set(S.wet?0x9aa0a0:0xf4f4ee);}
 
-let worldGroup=new THREE.Group();scene.add(worldGroup);
-const worldMats=new Set();
-function mat(col,glass){const m=new THREE.MeshStandardMaterial({color:col,roughness:glass?0.1:0.75,metalness:0,transparent:true,opacity:glass?0.22:1,polygonOffset:true,polygonOffsetFactor:2,polygonOffsetUnits:6});m.userData.glass=glass;worldMats.add(m);return m;}
-function buildRoads(){
+export let worldGroup=new THREE.Group();scene.add(worldGroup);
+export const worldMats=new Set();
+export function mat(col,glass){const m=new THREE.MeshStandardMaterial({color:col,roughness:glass?0.1:0.75,metalness:0,transparent:true,opacity:glass?0.22:1,polygonOffset:true,polygonOffsetFactor:2,polygonOffsetUnits:6});m.userData.glass=glass;worldMats.add(m);return m;}
+export function buildRoads(){
   scene.remove(roadGroup);roadGroup=new THREE.Group();scene.add(roadGroup);
   for(const [y0,y1] of W.roads){const r=new THREE.Mesh(new THREE.PlaneGeometry(W.x1-W.x0,y1-y0),roadMat);r.rotation.x=-Math.PI/2;r.position.set((W.x0+W.x1)/2,-0.008,-(y0+y1)/2);r.renderOrder=-2;roadGroup.add(r);}
   // markeringen tekenen (dezelfde definitie als het lidarmodel, als strepen) — zie worlds/*.js marks()
   const pl=new THREE.PlaneGeometry(1,1);pl.rotateX(-Math.PI/2);
   const dashes=[],solids=[];
-  const wd=WORLDS[W.ground];if(wd&&wd.marks)wd.marks(dashes,solids);
+  const wd=WORLDS[W.ground];if(wd&&wd.marks)wd.marks(dashes,solids,W);
   if(dashes.length){const im=new THREE.InstancedMesh(pl,markMat,dashes.length);const m4=new THREE.Matrix4();
     dashes.forEach((d,i)=>{m4.makeScale(d[2],1,d[3]);m4.setPosition(d[0],-0.004,-d[1]);im.setMatrixAt(i,m4);});im.renderOrder=-1;roadGroup.add(im);}
   for(const [y,w] of solids){const s=new THREE.Mesh(pl,markMat);s.scale.set(W.x1-W.x0,1,w);s.position.set((W.x0+W.x1)/2,-0.004,-y);s.renderOrder=-1;roadGroup.add(s);}
 }
-function buildWorldMeshes(){
+export function buildWorldMeshes(){
   scene.remove(worldGroup);worldMats.clear();
   worldGroup=new THREE.Group();scene.add(worldGroup);
   for(const ob of W.objs){const og=new THREE.Group();ob.group=og;worldGroup.add(og);const m=mat(ob.col,ob.glass);
@@ -71,13 +78,13 @@ function buildWorldMeshes(){
   buildRoads();applyObjMode();themeColors();
   $('dogBtn').hidden=W.ground==='highway';
 }
-function applyObjMode(){worldGroup.visible=S.objects!=='hidden';
+export function applyObjMode(){worldGroup.visible=S.objects!=='hidden';
   for(const m of worldMats){m.opacity=m.userData.glass?0.22:(S.objects==='ghost'?0.18:1);m.depthWrite=S.objects!=='ghost'&&!m.userData.glass;m.needsUpdate=true;}
   for(const k of ['glass','tire','rim','head','tail']){M[k].transparent=S.objects==='ghost';M[k].opacity=S.objects==='ghost'?0.18:1;M[k].depthWrite=S.objects!=='ghost';M[k].needsUpdate=true;}}
 
 /* eigen wagen */
-const veh=new THREE.Group();scene.add(veh);
-const egoPaint=new THREE.MeshStandardMaterial({color:0x1d5c8f,metalness:0.55,roughness:0.3,polygonOffset:true,polygonOffsetFactor:2,polygonOffsetUnits:6});
-const egoCar=buildCar(null,egoPaint);egoCar.position.x=CARC;veh.add(egoCar);
-const rackMat=new THREE.MeshStandardMaterial({color:0x2a2e33,metalness:0.6,roughness:0.4});
+export const veh=new THREE.Group();scene.add(veh);
+export const egoPaint=new THREE.MeshStandardMaterial({color:0x1d5c8f,metalness:0.55,roughness:0.3,polygonOffset:true,polygonOffsetFactor:2,polygonOffsetUnits:6});
+export const egoCar=buildCar(null,egoPaint);egoCar.position.x=CARC;veh.add(egoCar);
+export const rackMat=new THREE.MeshStandardMaterial({color:0x2a2e33,metalness:0.6,roughness:0.4});
 for(const x of [-2.0,-3.0]){const b=new THREE.Mesh(new THREE.BoxGeometry(0.05,0.04,1.3),rackMat);b.position.set(x,1.47,0);veh.add(b);}

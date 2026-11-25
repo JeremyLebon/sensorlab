@@ -17,7 +17,8 @@ Momenteel zit enkel de **lidar** in de simulator: drie werelden (straat, snelweg
 ```bash
 npm install
 npm run build     # src/ → dist/
-npm test          # build + headless rooktest (Chrome nodig, pad via CHROME=...)
+npm run lint      # eslint: vergeten imports / niet-gedeclareerde namen
+npm test          # lint + build + headless rooktest (Chrome nodig, pad via CHROME=...)
 ```
 
 ## Structuur
@@ -25,11 +26,11 @@ npm test          # build + headless rooktest (Chrome nodig, pad via CHROME=...)
 ```
 src/
   index.html            HTML-skelet (placeholders voor CSS, fonts, script)
-  order.json            volgorde waarin de bronbestanden samengevoegd worden
+  main.js               startpunt (ES-modules)
   core/                 gedeeld: toestand, wereld, wagen, 3D-scene, weer, camera, UI, experimenten-engine, lus
   worlds/               street.js, highway.js, farm.js — objecten + wegmarkering per wereld
   sensors/
-    lidar/              presets, model, scan, puntenwolk, puntenwolkvenster, 3D-montage, UI, meetwaarden, experimenten
+    lidar/              index.js (sensor-interface), presets, model, scan, puntenwolk, puntenwolkvenster, 3D-montage, UI, meetwaarden, experimenten
     radar/ ultrasonic/ camera/ gnss/ imu/   gepland
   workers/              gepland: raycast-worker
 build.mjs               esbuild → dist/

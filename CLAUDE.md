@@ -10,34 +10,42 @@ Sensorsimulator voor het vak Autonome mobiliteit en AI (VIVES, start voorjaar 20
 - **3D-weergave met een mooie personenwagen**, geen 2D-schema's. Het puntenwolkvenster blijft een aparte renderer.
 - **Cursusmateriaal**: elke opdracht in een experiment gebruikt enkel wat vooraf uitgelegd is.
 
-## Architectuur: stand van zaken (stap 1)
+## Architectuur (stap 2: ES-modules + sensor-interface)
 
-De oorspronkelijke `lidar3d.html` (±1000 regels, één ES-module) is **zonder gedragswijziging** opgesplitst in bestanden per map. `build.mjs` voegt ze samen in de volgorde van `src/order.json` tot één module. Alle bestanden delen dus **één scope**: globale `let`/`const`/functies zoals `S`, `W`, `PB`, `ptsGeo`, `driving` en `dirty` zijn overal zichtbaar.
+Echte ES-modules met `import`/`export`. Startpunt `src/main.js` → `core/loop.js` (`start()`). `build.mjs` bundelt met esbuild:
+offline als IIFE met three inline, en een CDN-versie (ESM, three extern via een importmap).
 
-Gevolgen:
-- De volgorde in `order.json` doet ertoe voor **top-level code die bij het laden draait** (bv. `scene.add(...)` in `pointcloud.js` heeft `scene` uit `core/scene.js` nodig). Functies zelf worden pas in `core/loop.js` aangeroepen, dus verwijzingen binnen functies mogen naar latere bestanden gaan.
-- Een bestand apart importeren werkt niet. Altijd via `npm run build`.
-- Een nieuwe wereld: `src/worlds/x.js` met `WORLDS.x={build(h),isMark(x,y),marks(dashes,solids)}`, toevoegen aan `order.json`, aan de keuzelijst in `core/ui.js` (`CTRL.env`) en aan `WORLDSTART` in `core/state.js`.
+**Regels voor gedeelde toestand**
+- Een geëxporteerde `let` (bv. `W` in `core/world.js`, `ptsGeo` in `pointcloud.js`, `PB`/`STAT`/`effHz` in `scan.js`, `view` in `camera.js`, `pcvView` in `pcview.js`) wordt **enkel in zijn eigen module toegewezen**. Importeurs lezen hem live. Moet een andere module iets wijzigen, dan via een functie (bv. `resizePoints`, `camSync`).
+- Vlaggen die meerdere modules schrijven staan in `F` (`core/state.js`): `F.dirty` (volledige scan nodig), `F.worldDirty` (wereld herbouwen), `F.pendingCam` (cameraweergave toepassen in het volgende frame), `F.driving`.
+- Hooks zonder circulaire afhankelijkheid: `onPrims` (world → lidar-hoekvakken), `pointUsers`/`pointMats` (pointcloud → puntenwolkvenster).
+- Circulaire imports bestaan (bv. `scan` ↔ `pointcloud`, `ui` ↔ `experiments`). Ze werken zolang **top-level code** enkel modules gebruikt die al geëvalueerd zijn. Gebruik over de grens heen enkel binnen functies. Na elke wijziging: `npm test`, want een TDZ-fout verschijnt pas in de browser.
+- `npm run lint` (eslint, `no-undef`) vangt vergeten imports, ook in event-handlers die de rooktest niet raakt.
 
-Wereldcoördinaten: x vooruit, y links, z omhoog (zoals ROS). Three.js gebruikt y omhoog: altijd via `V(x,y,z)`. Het puntenwolkvenster werkt in het voertuigframe (base_link).
-
-## Volgende stap (stap 2): echte modules + sensor-interface
-
-Doel: `S` opsplitsen in een gedeelde wereld-/voertuigtoestand en een toestand per sensor, en elke sensor laten voldoen aan:
+**Sensor-interface** (`sensors/lidar/index.js`). `core/loop.js` overloopt `SENSORS` en roept per frame `update3d()` → `step(dt, now, force)` → `animate(dt)` → `render(layout)` aan:
 
 ```js
 export default {
   id: 'lidar', label: 'Lidar',
-  params: [...],                 // UI-schema (nu CTRL.sensor)
-  mount(vehicle, scene) {},      // 3D-model van de sensor (nu mount3d.js)
-  step(world, pose, dt) {},      // meten (nu fullScan/sweepStep)
-  views: [...],                  // eigen vensters (nu pcview.js)
-  metrics(world) {},             // tabel + HUD (nu metrics.js)
-  experiments: [...]             // nu EXPS
+  params,              // UI-schema tabblad Sensor (controls.js)
+  presets, experiments,
+  update3d() {},       // sensor op de wagen + voertuigframe van het eigen venster
+  step(dt, now, force) {},   // meten; force = volledige scan na een wijziging
+  animate(dt) {},      // stralen-sweep, camerabesturing eigen venster
+  render(layout) {},   // eigen venster(s) tekenen
+  stats(), bench()
 }
 ```
 
-Aanpak: eerst de gedeelde toestand in een object (`ctx`) stoppen, dan bestand per bestand `import`/`export` invoeren, met de rooktest groen na elke stap. Mutabele bindingen (`W`, `ptsGeo`, `BINS`, `driving`, `dirty`) kunnen niet als `let` geëxporteerd en elders herschreven worden: die gaan in `ctx`.
+**Nog niet gescheiden (stap 2b)**
+- De lidar-parameters staan nog in de gedeelde `S` (`type … deskew`, `color`, `psize`, `beams`). Plan: per sensor een eigen toestand `sensor.state`, `getK`/`setK` in `core/ui.js` laten routeren via een prefix (bv. `lidar.layers`), en `applyState` laat experimenten `set:{world:…, lidar:{…}}` geven.
+- `core/camera.js`, `core/layout.js`, `core/ui.js` en `core/experiments.js` importeren nog rechtstreeks uit `sensors/lidar` (puntenwolkvenster, presets, montageplaats). Bij een tweede sensor: de views en de layoutknoppen generiek maken.
+
+Een nieuwe wereld: `src/worlds/x.js` met `export default {label, build(h){… return W}, isMark(x,y), marks(dashes,solids,W)}`. Toevoegen aan `WORLDS` in `core/world.js`, aan de keuzelijst in `core/ui.js` (`CTRL.env`) en aan `WORLDSTART` in `core/state.js`.
+
+Een nieuwe sensor: map `src/sensors/<id>/` met een `index.js` volgens de interface, en toevoegen aan `SENSORS` in `core/loop.js`.
+
+Wereldcoördinaten: x vooruit, y links, z omhoog (zoals ROS). Three.js gebruikt y omhoog: altijd via `V(x,y,z)`. Het puntenwolkvenster werkt in het voertuigframe (base_link).
 
 ## Prestaties: volgorde
 
@@ -56,6 +64,6 @@ Rekentijd per volledige scan (headless Chrome, swiftshader): 16 lagen ±20 ms, 6
 ## Open punten
 
 - Experimenten nalezen (Nobel).
-- Stap 2 (modules), daarna worker, daarna radar als eerste nieuwe sensor (sensorfusie: radar door stof en mist).
+- Stap 2b (toestand per sensor), daarna worker, daarna radar als eerste nieuwe sensor (sensorfusie: radar door stof en mist).
 - Eventueel: GitHub Pages als alternatief voor uploaden in Toledo; `/points` publiceren via rosbridge; koppeling met het CR0451-labo.
 - Bekend klein lay-outpunt: bij smalle 3D-weergave overlapt de knoppenbalk "Camera / Persoon / Hond" de rijknoppen.

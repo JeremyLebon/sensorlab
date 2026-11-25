@@ -1,6 +1,6 @@
 /* sensors/lidar/controls.js — UI-schema van de lidar (tabblad Sensor) */
-const CTRL={
- sensor:[
+import {MOUNTS} from '../../core/vehicle.js';
+export default [
   {g:'Sensor',items:[
    {k:'preset',t:'sel',label:'Voorbeeld',opts:[['vlp16','Roterend, 16 lagen'],['os64','Roterend, 64 lagen'],['hr128','Roterend, 128 lagen, lang bereik'],['solid','Solid-state in grille, 120°'],['safety','2D-veiligheidsscanner (270°)'],['lds','Goedkope 2D (TurtleBot-klasse)'],['custom','— eigen instelling —']]},
    {k:'type',t:'sel',label:'Bouwwijze',opts:[['rot','Roterend'],['static','Statisch / solid-state']]},
@@ -23,4 +23,4 @@ const CTRL={
    {k:'echo',t:'sel',label:'Echo-keuze',opts:[['first','Eerste echo'],['last','Laatste echo'],['strong','Sterkste echo']]},
    {k:'noise',label:'Afstandsruis (1σ)',min:0,max:0.15,step:0.005,u:' m',d:3},
    {k:'deskew',t:'chk',label:'Bewegingscompensatie (deskew)'}]}
- ]};
+ ];

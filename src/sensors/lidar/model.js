@@ -1,8 +1,12 @@
 /* sensors/lidar/model.js — lidarmodel: stralen, raycast, signaal, echo's, weer
    Signaal: ρ · T · exp(-2αR) / R²  tegen drempel 0,1 / Rmax²  (datasheetbereik @10 %) */
-const GROUND={name:'grond',rho:0.2};
-function layerEls(){const L=S.layers,a=[];if(L===1)return[S.vcenter*D2R];for(let j=0;j<L;j++)a.push((S.vcenter-S.vfov/2+S.vfov*j/(L-1))*D2R);return a;}
-function selfBlock(ox,oy,oz,dx,dy,tE){
+import {D2R,fmod} from '../../core/util.js';
+import {S} from '../../core/state.js';
+import {VEHB,MOUNTS} from '../../core/vehicle.js';
+import {W,isMark,onPrims} from '../../core/world.js';
+export const GROUND={name:'grond',rho:0.2};
+export function layerEls(){const L=S.layers,a=[];if(L===1)return[S.vcenter*D2R];for(let j=0;j<L;j++)a.push((S.vcenter-S.vfov/2+S.vfov*j/(L-1))*D2R);return a;}
+export function selfBlock(ox,oy,oz,dx,dy,tE){
   for(const B of VEHB){let tmin=0,tmax=1e9;
     if(Math.abs(dx)<1e-12){if(ox<B.x0||ox>B.x1)continue;}else{let a=(B.x0-ox)/dx,b=(B.x1-ox)/dx;if(a>b)[a,b]=[b,a];tmin=Math.max(tmin,a);tmax=Math.min(tmax,b);}
     if(Math.abs(dy)<1e-12){if(oy<B.y0||oy>B.y1)continue;}else{let a=(B.y0-oy)/dy,b=(B.y1-oy)/dy;if(a>b)[a,b]=[b,a];tmin=Math.max(tmin,a);tmax=Math.min(tmax,b);}
@@ -12,11 +16,11 @@ function selfBlock(ox,oy,oz,dx,dy,tE){
     if(hi>=B.z0&&lo<=B.z1)return true;}
   return false;
 }
-const CT=new Float64Array(96),CO=new Array(96);
+export const CT=new Float64Array(96),CO=new Array(96);
 /* hoekvakken: elke straal test enkel de objecten in zijn eigen 0,5°-vak i.p.v. alle objecten */
-const NB=720,TWO_PI=2*Math.PI;let BINS=null;
-function segDist(ox,oy,p){const ex=p.x2-p.x1,ey=p.y2-p.y1,l2=ex*ex+ey*ey;let t=l2>0?((ox-p.x1)*ex+(oy-p.y1)*ey)/l2:0;t=Math.max(0,Math.min(1,t));return Math.hypot(p.x1+t*ex-ox,p.y1+t*ey-oy);}
-function buildBins(ox,oy,margin,rcull){
+export const NB=720,TWO_PI=2*Math.PI;let BINS=null;onPrims.push(()=>{BINS=null;});   // nieuwe botsvormen → oude hoekvakken ongeldig
+export function segDist(ox,oy,p){const ex=p.x2-p.x1,ey=p.y2-p.y1,l2=ex*ex+ey*ey;let t=l2>0?((ox-p.x1)*ex+(oy-p.y1)*ey)/l2:0;t=Math.max(0,Math.min(1,t));return Math.hypot(p.x1+t*ex-ox,p.y1+t*ey-oy);}
+export function buildBins(ox,oy,margin,rcull){
   const bins=new Array(NB);for(let i=0;i<NB;i++)bins[i]=[];
   for(const p of W.prims){let a0,span,d;
     if(p.k===0){d=segDist(ox,oy,p);if(d>rcull)continue;const a1=Math.atan2(p.y1-oy,p.x1-ox),a2=Math.atan2(p.y2-oy,p.x2-ox);let df=fmod(a2-a1+Math.PI,TWO_PI)-Math.PI;a0=df>=0?a1:a2;span=Math.abs(df);}
@@ -27,9 +31,9 @@ function buildBins(ox,oy,margin,rcull){
     for(let k=0;k<cnt;k++)bins[(i0+k)%NB].push(p);}
   BINS=bins;
 }
-function dustSpan(ox,oy,dx,dy){const d=W.dustC,fx=ox-d.cx,fy=oy-d.cy,b=fx*dx+fy*dy,c=fx*fx+fy*fy-d.r*d.r,disc=b*b-c;
+export function dustSpan(ox,oy,dx,dy){const d=W.dustC,fx=ox-d.cx,fy=oy-d.cy,b=fx*dx+fy*dy,c=fx*fx+fy*fy-d.r*d.r,disc=b*b-c;
   if(disc<0)return null;const s=Math.sqrt(disc),a=Math.max(-b-s,0),e=-b+s;return e>a?[a,e]:null;}
-function cast(rng,ox,oy,oz,az,el){
+export function cast(rng,ox,oy,oz,az,el){
   const dx=Math.cos(az),dy=Math.sin(az),tE=Math.tan(el),cE=Math.cos(el);let n=0;
   const list=BINS?BINS[Math.floor(fmod(az+Math.PI,TWO_PI)/TWO_PI*NB)%NB]:W.prims;
   for(const p of list){let t;
@@ -43,12 +47,12 @@ function cast(rng,ox,oy,oz,az,el){
   for(let i=0;i<n;i++){const o=CO[i];if(o.glass){if(rng()<0.85){trans*=0.8;continue;}glassHit=true;}hT=CT[i];hO=o;break;}
   return{dx,dy,cE,hT,hO,trans,glassHit};
 }
-const alphaAir=()=>S.fog*0.06+S.rain*0.012;
-const sTh=()=>0.1/(S.rmax*S.rmax);
-function effRange(rho){const a=alphaAir(),th=sTh();let lo=0.3,hi=2000;if(rho*Math.exp(-2*a*lo)/(lo*lo)<th)return 0;
+export const alphaAir=()=>S.fog*0.06+S.rain*0.012;
+export const sTh=()=>0.1/(S.rmax*S.rmax);
+export function effRange(rho){const a=alphaAir(),th=sTh();let lo=0.3,hi=2000;if(rho*Math.exp(-2*a*lo)/(lo*lo)<th)return 0;
   for(let i=0;i<60;i++){const m=(lo+hi)/2;(rho*Math.exp(-2*a*m)/(m*m)>=th)?lo=m:hi=m;}return lo;}
 // src: 0 grond,1 object,2 glas,3 regen,4 mist,5 stof,6 storing,7 markering
-function measure(rng,ox,oy,oz,az,el){
+export function measure(rng,ox,oy,oz,az,el){
   const r=cast(rng,ox,oy,oz,az,el),a=alphaAir(),th=sTh(),cands=[];
   const span=S.dust?dustSpan(ox,oy,r.dx,r.dy):null,kd=S.dustD*0.12;
   if(r.hO){const R=r.hT/r.cE;let rho=r.hO.rho,src=1;
@@ -74,4 +78,4 @@ function measure(rng,ox,oy,oz,az,el){
   else{for(const x of cands)if(x.sig>c.sig)c=x;}
   return c;
 }
-const mountX=()=>MOUNTS[S.mount].x;
+export const mountX=()=>MOUNTS[S.mount].x;

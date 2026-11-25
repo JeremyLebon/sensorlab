@@ -1,8 +1,9 @@
 /* worlds/farm.js — erf en akker: maïsrijen met persoon, balen, draadafsluiting, tractor, graanwagen */
-WORLDS.farm={
+import {S} from '../core/state.js';
+export default {
   label:'Erf en akker',
   build({O,box,cyl,wall,person}){let o;
-    W={ground:'farm',lanes:[0],x0:-40,x1:90,roads:[[-3,3]],start:0,end:40,dust:{dx:10,dy:0,r:5},hud:[['Persoon (in het veld)','persoon'],['Hond (0,5 m)','hond']]};
+    const W={ground:'farm',lanes:[0],x0:-40,x1:90,roads:[[-3,3]],start:0,end:40,dust:{dx:10,dy:0,r:5},hud:[['Persoon (in het veld)','persoon'],['Hond (0,5 m)','hond']]};
     o=O('Persoon (in het veld)',0.35,'#e2557a',{key:true});person(o,S.ped.x,S.ped.y);
     o=O('Hond (0,5 m)',0.3,'#c98a4b',{key:true});box(o,S.dog.x,S.dog.y,0.75,0.28,0,0.5,0.4,'dog');o.hx=S.dog.x;o.hy=S.dog.y;
     o=O('Maïsrijen (0,8 m)',0.2,'#6b9a3a',{key:true});for(let i=0;i<12;i++)box(o,25,5+i*0.75,40,0.25,0,0.8);
@@ -15,6 +16,7 @@ WORLDS.farm={
     o=O('Schuur',0.4,'#a94f3c');box(o,0,16,20,10,0,7);
     o=O('Silo',0.6,'#c9ced2');cyl(o,-16,12,3,0,12);
     o=O('Graanwagen (vanaf 1,1 m)',0.4,'#d07a2a',{key:true});box(o,48,-4,5,2.3,1.1,3.0);for(const x of [47,49])for(const y of [-3,-5])box(o,x,y,1.0,0.35,0,1.1,0,'wheel');
+    return W;
   },
   isMark(){return false;},
   marks(){}

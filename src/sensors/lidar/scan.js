@@ -1,17 +1,22 @@
 /* sensors/lidar/scan.js — puntenbuffer: één vak per straal (kolom × laag), in wereldcoördinaten
    Roterend + rijden: elke frame wordt enkel de sector berekend die de sensor in die tijd doorlopen heeft
    (zoals een echte lidar live in RViz). Zo loopt de puntenwolk niet achter op de 3D-wereld.          */
-let PB=null,STAT={},sweepAz=-180,revVx=0,revVy=0,revYaw=0;
+import {D2R,fmod,mulberry32,gauss} from '../../core/util.js';
+import {S,EGO,F} from '../../core/state.js';
+import {W,buildPrims} from '../../core/world.js';
+import {layerEls,selfBlock,measure,effRange,sTh,mountX,buildBins} from './model.js';
+import {ptsGeo,resizePoints,colorSlot,setPointSize} from './pointcloud.js';
+export let PB=null,STAT={};
+let sweepAz=-180,revVx=0,revVy=0,revYaw=0;
 function rcull(){return Math.min(effRange(3)*1.05+5,2000);}
 function ensureBuffer(){
   const els=layerEls(),L=els.length,nAz=Math.max(1,Math.round(S.hfov/S.hres)),N=nAz*L,sig=nAz+'|'+L+'|'+S.hfov;
   if(PB&&PB.sig===sig){PB.els=els;return;}
   PB={sig,els,L,nAz,N,az0:S.hfov>=360?-180:-S.hfov/2,step:S.hfov/nAz,Z:new Float32Array(N),SG:new Float32Array(N),LY:new Uint8Array(N),SRC:new Uint8Array(N),OID:new Int16Array(N).fill(-2),BL:new Uint8Array(N)};
-  ptsGeo.dispose();ptsGeo=new THREE.BufferGeometry();const pos=new Float32Array(N*3);for(let k=0;k<N;k++)pos[k*3+1]=-1e5;
-  ptsGeo.setAttribute('position',new THREE.BufferAttribute(pos,3));ptsGeo.setAttribute('color',new THREE.BufferAttribute(new Float32Array(N*3),3));
-  ptsObj.geometry=ptsGeo;pcvPts.geometry=ptsGeo;
+  resizePoints(N);
 }
-let RNG=mulberry32(12345),colMs=0.05,colCount=0,sweepDone=0,effHz=0,effT=0;
+let RNG=mulberry32(12345),colMs=0.05,colCount=0,sweepDone=0,effT=0;
+export let effHz=0;
 // werkelijke pose (vx,vy,yaw) bepaalt de stralen; geplotte pose (qx,qy,qyaw) = wat de software denkt (zonder deskew: pose bij begin omwenteling)
 function computeColumn(i,vx,vy,yaw,qx,qy,qyaw){colCount++;
   const H=S.mountH,mx=mountX(),yawE=S.err.yaw*D2R,pitE=S.err.pitch*D2R,th=sTh(),L=PB.L,els=PB.els;
@@ -30,15 +35,15 @@ function computeColumn(i,vx,vy,yaw,qx,qy,qyaw){colCount++;
 }
 function prepScan(margin){if(W.dynamic)buildPrims();W.dustC={cx:S.vx+W.dust.dx,cy:W.dust.dy,r:W.dust.r};const mx=mountX();buildBins(S.vx+mx*Math.cos(EGO.yaw),S.vy+mx*Math.sin(EGO.yaw),margin,rcull());}
 // volledige scan in één keer (stilstand, na een wijziging, of een statische flash-lidar)
-function fullScan(v){
-  ensureBuffer();RNG=mulberry32(S.live||driving?(Math.random()*1e9)|0:12345);
+export function fullScan(v){
+  ensureBuffer();RNG=mulberry32(S.live||F.driving?(Math.random()*1e9)|0:12345);
   prepScan(v/S.freq*1.5+1);
   for(let i=0;i<PB.nAz;i++){const azN=PB.az0+(i+0.5)*PB.step;const t=S.type==='rot'?fmod(azN+180,360)/360/S.freq:0,sh=v*t;
     computeColumn(i,S.vx+sh,S.vy,EGO.yaw,S.vx+(S.deskew?sh:0),S.vy,EGO.yaw);}
   sweepAz=-180;revVx=S.vx;revVy=S.vy;revYaw=EGO.yaw;markPts();
 }
 // roterende lidar tijdens het rijden: enkel de sector die in dt doorlopen werd
-function sweepStep(dt){
+export function sweepStep(dt){
   ensureBuffer();RNG=mulberry32((Math.random()*1e9)|0);prepScan(1);
   const maxCols=Math.max(4,Math.floor(14/Math.max(colMs,1e-4)));   // rekenbudget per frame: ±14 ms
   let adv=Math.min(360,360*S.freq*dt,maxCols*PB.step*1.0001);sweepDone+=adv;
@@ -51,11 +56,13 @@ function sweepStep(dt){
   const nc=colCount-nc0;if(nc>0)colMs=0.8*colMs+0.2*(performance.now()-tc0)/nc;
 }
 // rijdend verkeer: punten op bewegende objecten schuiven mee tot ze opnieuw gemeten worden
-function moveDynamicPoints(dt){if(!PB||!W.dynamic)return;const vs=W.objs.map(o=>o.v||0),pa=ptsGeo.attributes.position.array,O=PB.OID;
+export function moveDynamicPoints(dt){if(!PB||!W.dynamic)return;const vs=W.objs.map(o=>o.v||0),pa=ptsGeo.attributes.position.array,O=PB.OID;
   for(let k=0;k<PB.N;k++){const id=O[k];if(id>=0){const v=vs[id];if(v)pa[k*3]+=v*dt;}}ptsGeo.attributes.position.needsUpdate=true;}
 function markPts(){ptsGeo.attributes.position.needsUpdate=true;ptsGeo.attributes.color.needsUpdate=true;
-  const sz=0.07*S.psize*(S.layers<=2?1.6:1);ptsMat.size=sz;pcvMat.size=sz*1.15;}
-function computeStats(){
+  setPointSize(0.07*S.psize*(S.layers<=2?1.6:1));}
+// gemeten omwentelingen per seconde (HUD: "pc haalt X van Y Hz")
+export function updateRate(dt){effT+=dt;if(effT>1){effHz=S.type==='rot'?sweepDone/360/effT:S.freq;sweepDone=0;effT=0;}}
+export function computeStats(){
   const cnt=new Map();for(const o of W.objs)cnt.set(o.name,0);let n=0,blocked=0;
   for(let k=0;k<PB.N;k++){if(PB.BL[k]){blocked++;continue;}const id=PB.OID[k];if(id===-2)continue;n++;if(id>=0){const o=W.objs[id];if(o)cnt.set(o.name,cnt.get(o.name)+1);}}
   STAT={nAz:PB.nAz,L:PB.L,N:PB.N,n,blocked,cnt};

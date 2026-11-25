@@ -1,4 +1,18 @@
 /* core/ui.js — tabblad Omgeving, bedieningselementen, rijden, rijstrook, plaatsen van persoon/hond */
+import * as THREE from 'three';
+import {$,nl,toast} from './util.js';
+import {S,EGO,F,WORLDSTART} from './state.js';
+import {CARL,carTop} from './vehicle.js';
+import {W,TDX} from './world.js';
+import {renderer,camera,ground,applyObjMode,themeColors} from './scene.js';
+import {updateFog} from './weather.js';
+import {view,setView} from './camera.js';
+import {resize} from './layout.js';
+import {pcvView,setPcvView} from '../sensors/lidar/pcview.js';
+import {PRESETS,SENSORKEYS} from '../sensors/lidar/presets.js';
+import {mountX} from '../sensors/lidar/model.js';
+import lidarParams from '../sensors/lidar/controls.js';
+const CTRL={sensor:lidarParams,env:[]};
 CTRL.env=[
   {g:'Wereld',items:[
    {k:'world',t:'sel',label:'Omgeving',opts:[['street','Straat'],['highway','Snelweg'],['farm','Erf en akker']]},
@@ -21,7 +35,7 @@ const getK=k=>k.split('.').reduce((o,p)=>o[p],S);
 function setK(k,v){const p=k.split('.');let o=S;for(let i=0;i<p.length-1;i++)o=o[p[i]];o[p[p.length-1]]=v;}
 const ctrlEls={};
 function fmtV(it,v){if(it.fmt)return it.fmt(v);return(v>0&&it.k.startsWith('err.')?'+':'')+nl(v,it.d??2)+(it.u||'');}
-function buildControls(){
+export function buildControls(){
   for(const tab of ['sensor','env']){const root=$('pane-'+tab);root.innerHTML='';
     for(const G of CTRL[tab]){const sec=document.createElement('section');sec.innerHTML='<h2>'+G.g+'</h2>'+(G.note?'<p class="hint">'+G.note+'</p>':'');
       for(const it of G.items){let el;
@@ -35,45 +49,43 @@ function buildControls(){
         sec.appendChild(el);}
       root.appendChild(sec);}}
 }
-function syncControls(){for(const k in ctrlEls){const c=ctrlEls[k],v=getK(k);
+export function syncControls(){for(const k in ctrlEls){const c=ctrlEls[k],v=getK(k);
   if(c.it.t==='chk')c.inp.checked=!!v;else{c.inp.value=v;if(c.out)c.out.textContent=fmtV(c.it,v);}
   const dis=(k==='vfov'&&S.layers===1)||(k==='dustD'&&!S.dust)||(k==='deskew'&&S.type!=='rot');
   c.inp.disabled=dis;c.el.classList.toggle('dis',dis);}}
 function fixMount(){const min=S.mount==='front'?0.1:carTop(mountX())+0.08;if(S.mountH<min){S.mountH=+min.toFixed(2);toast('Op deze plaats: montagehoogte minstens '+nl(S.mountH,2)+' m');}}
-let dirty=true,worldDirty=true;
 function onChange(k){
   if(k==='preset'&&S.preset!=='custom')Object.assign(S,PRESETS[S.preset]);
   else if(SENSORKEYS.includes(k)){S.preset='custom';if(k==='type'&&S.type==='static'&&S.hfov>180)S.hfov=120;}
-  if(k==='world'){const w=WORLDSTART[S.world];S.ped={...w.ped};S.dog={...w.dog};S.speed=w.speed;S.vx=0;S.vy=0;EGO.yaw=0;EGO.vyRate=0;EGO.target=0;TDX.clear();worldDirty=true;resetCams();}
+  if(k==='world'){const w=WORLDSTART[S.world];S.ped={...w.ped};S.dog={...w.dog};S.speed=w.speed;S.vx=0;S.vy=0;EGO.yaw=0;EGO.vyRate=0;EGO.target=0;TDX.clear();F.worldDirty=true;resetCams();}
   if(['mount','mountH','preset'].includes(k))fixMount();
   if(k==='objects')applyObjMode();
   if(k==='fog')updateFog();
   if(k==='wet')themeColors();
-  markExp(null);syncControls();dirty=true;
+  markExp(null);syncControls();F.dirty=true;
 }
-let toastT=0;function toast(t){const el=$('toast');el.textContent=t;el.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('on'),2400);}
+export function markExp(i){document.querySelectorAll('.exp').forEach((e,k)=>e.classList.toggle('active',k===i));}
 document.querySelectorAll('.tabs button').forEach(b=>b.addEventListener('click',()=>{
   document.querySelectorAll('.tabs button').forEach(x=>x.setAttribute('aria-selected',x===b));
   document.querySelectorAll('.pane').forEach(p=>p.hidden=p.id!=='pane-'+b.dataset.tab);}));
 document.querySelectorAll('#views button').forEach(b=>b.addEventListener('click',()=>setView(b.dataset.view)));
-function setLayout(l){$('viewsBox').dataset.l=l;document.querySelectorAll('#layoutSeg button').forEach(b=>b.classList.toggle('on',b.dataset.l===l));requestAnimationFrame(resize);}
+export function setLayout(l){$('viewsBox').dataset.l=l;document.querySelectorAll('#layoutSeg button').forEach(b=>b.classList.toggle('on',b.dataset.l===l));requestAnimationFrame(resize);}
 document.querySelectorAll('#layoutSeg button').forEach(b=>b.addEventListener('click',()=>setLayout(b.dataset.l)));
 let mode='orbit';
 document.querySelectorAll('#modes button').forEach(b=>b.addEventListener('click',()=>{mode=b.dataset.mode;
   document.querySelectorAll('#modes button').forEach(x=>x.classList.toggle('on',x===b));if(mode!=='orbit')toast('Klik op de grond om te plaatsen');}));
-let driving=false;
-function setDriving(on){driving=on;$('driveBtn').classList.toggle('on',on);$('driveBtn').textContent=on?'❚❚ Stoppen':'▶ Rijden';dirty=true;}
-$('driveBtn').addEventListener('click',()=>setDriving(!driving));
-function resetCams(){setView(view==='sensor'?'free':view);setPcvView(pcvView);}
+export function setDriving(on){F.driving=on;$('driveBtn').classList.toggle('on',on);$('driveBtn').textContent=on?'❚❚ Stoppen':'▶ Rijden';F.dirty=true;}
+$('driveBtn').addEventListener('click',()=>setDriving(!F.driving));
+export function resetCams(){setView(view==='sensor'?'free':view);setPcvView(pcvView);}
 function changeLane(dir){const ls=W.lanes||[0];let i=ls.reduce((b,y,k)=>Math.abs(y-EGO.target)<Math.abs(ls[b]-EGO.target)?k:b,0);const ni=i+dir;
   if(ni<0||ni>=ls.length){toast(ls.length<2?'Hier is maar één rijstrook':'Geen rijstrook meer aan die kant');return;}EGO.target=ls[ni];}
 $('laneL').addEventListener('click',()=>changeLane(1));$('laneR').addEventListener('click',()=>changeLane(-1));
 addEventListener('keydown',e=>{if(e.target.closest&&e.target.closest('input,select,textarea'))return;if(e.key==='ArrowLeft'){changeLane(1);e.preventDefault();}else if(e.key==='ArrowRight'){changeLane(-1);e.preventDefault();}});
-$('resetBtn').addEventListener('click',()=>{S.vx=0;S.vy=0;EGO.yaw=0;EGO.vyRate=0;EGO.target=0;TDX.clear();worldDirty=true;dirty=true;resetCams();});
+$('resetBtn').addEventListener('click',()=>{S.vx=0;S.vy=0;EGO.yaw=0;EGO.vyRate=0;EGO.target=0;TDX.clear();F.worldDirty=true;F.dirty=true;resetCams();});
 const ray=new THREE.Raycaster(),ndc=new THREE.Vector2();let downXY=null;
 renderer.domElement.addEventListener('pointerdown',e=>{downXY=[e.clientX,e.clientY];});
 renderer.domElement.addEventListener('pointerup',e=>{if(mode==='orbit'||!downXY)return;if(Math.hypot(e.clientX-downXY[0],e.clientY-downXY[1])>5)return;
   const r=renderer.domElement.getBoundingClientRect();ndc.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(ndc,camera);
   const hit=ray.intersectObject(ground)[0];if(!hit)return;const x=hit.point.x,y=-hit.point.z;
   if(x>S.vx-CARL-0.4&&x<S.vx+0.5&&Math.abs(y-S.vy)<1.3){toast('Niet op de eigen wagen');return;}
-  S[mode]={x:+x.toFixed(2),y:+y.toFixed(2)};worldDirty=true;dirty=true;markExp(null);});
+  S[mode]={x:+x.toFixed(2),y:+y.toFixed(2)};F.worldDirty=true;F.dirty=true;markExp(null);});

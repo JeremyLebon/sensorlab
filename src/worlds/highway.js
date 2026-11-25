@@ -1,9 +1,11 @@
 /* worlds/highway.js — snelweg: 3 rijstroken per richting (rijstrookmiddens y = -3,5 / 0 / +3,5),
    pechstrook rechts, middenberm met New Jersey, rijdend verkeer */
-WORLDS.highway={
+import {S} from '../core/state.js';
+import {fmod} from '../core/util.js';
+export default {
   label:'Snelweg',
   build({O,box,cyl,wall,car,truck,person}){let o;
-    W={ground:'highway',lanes:[-3.5,0,3.5],x0:-300,x1:1100,roads:[[-8.2,5.6],[6.3,17.6]],start:0,end:860,dust:{dx:12,dy:0,r:5},
+    const W={ground:'highway',lanes:[-3.5,0,3.5],x0:-300,x1:1100,roads:[[-8.2,5.6],[6.3,17.6]],start:0,end:860,dust:{dx:12,dy:0,r:5},
        hud:[['Auto voor ons','auto voor ons'],['Verloren band (0,25 m)','verloren band']]};
     o=O('Auto voor ons',0.7,'#f1f4f6',{key:true,v:29});car(o,40,0,0);
     o=O('Zwarte auto (5 %)',0.05,'#16191c',{key:true,v:33});car(o,14,3.5,0);
@@ -22,10 +24,11 @@ WORLDS.highway={
     o=O('Borden boven de weg (retro)',3,'#1f6fb8',{key:true});for(const y of [-3.5,0,3.5])box(o,239.6,y,0.12,3.3,5.3,6.9);
     o=O('Brug (onderkant 5,4 m)',0.35,'#b0b4b3',{key:true});box(o,520,4.5,12,56,5.4,6.4);for(const y of [-11.5,5.95,20])box(o,520,y,1.2,1.2,0,5.4);
     o=O('Geluidsmuur',0.3,'#8b9a86');wall(o,-300,-14,1100,-14,0,4,0.3);
+    return W;
   },
   isMark(x,y){
     for(const yl of [-1.75,1.75,10.2,13.7])if(Math.abs(y-yl)<0.08&&fmod(x,12)<3)return true;
     for(const yl of [-5.25,5.25,6.75,17.15])if(Math.abs(y-yl)<0.1)return true;return false;
   },
-  marks(dashes,solids){for(const yl of [-1.75,1.75,10.2,13.7])for(let x=W.x0;x<W.x1;x+=12)dashes.push([x+1.5,yl,3,0.16]);solids.push([-5.25,0.2],[5.25,0.2],[6.75,0.2],[17.15,0.2]);}
+  marks(dashes,solids,W){for(const yl of [-1.75,1.75,10.2,13.7])for(let x=W.x0;x<W.x1;x+=12)dashes.push([x+1.5,yl,3,0.16]);solids.push([-5.25,0.2],[5.25,0.2],[6.75,0.2],[17.15,0.2]);}
 };

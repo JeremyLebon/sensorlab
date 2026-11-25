@@ -1,8 +1,10 @@
 /* worlds/street.js — straat met voetganger, hond, auto's, vrachtwagen, slagboom, bushokje met glas */
-WORLDS.street={
+import {S} from '../core/state.js';
+import {fmod} from '../core/util.js';
+export default {
   label:'Straat',
   build({O,box,cyl,wall,car,person}){let o;
-    W={ground:'street',lanes:[0,3.5],x0:-60,x1:110,roads:[[-5.75,7.75]],start:0,end:46,dust:{dx:10,dy:-0.5,r:4.5},
+    const W={ground:'street',lanes:[0,3.5],x0:-60,x1:110,roads:[[-5.75,7.75]],start:0,end:46,dust:{dx:10,dy:-0.5,r:4.5},
        hud:[['Voetganger','voetganger'],['Hond (0,5 m)','hond']]};
     o=O('Voetganger',0.35,'#e2557a',{key:true});person(o,S.ped.x,S.ped.y);
     o=O('Hond (0,5 m)',0.3,'#c98a4b',{key:true});box(o,S.dog.x,S.dog.y,0.75,0.28,0,0.5,0.4,'dog');o.hx=S.dog.x;o.hy=S.dog.y;
@@ -23,10 +25,11 @@ WORLDS.street={
     o=O('Haag',0.15,'#4f9a52',{key:true});box(o,-10,-10,8,1.4,0,1.3);
     o=O('Gebouw',0.4,'#a7b0b8');box(o,46,19,18,8,0,9);box(o,-26,16,14,8,0,7);box(o,8,17,12,7,0,6);
     o=O('Muur',0.5,'#a7b0b8');wall(o,-60,-15,110,-15,0,2.5,0.3);
+    return W;
   },
   isMark(x,y){
     if(Math.abs(y-1)<0.07&&fmod(x,6)<3)return true;if(Math.abs(y+5.45)<0.07||Math.abs(y-7.45)<0.07)return true;
     if(x>30&&x<34&&y>-5.6&&y<7.6&&fmod(y+5.6,1)<0.5)return true;return false;
   },
-  marks(dashes,solids){for(let x=W.x0;x<W.x1;x+=6)dashes.push([x+1.5,1,3,0.14]);solids.push([-5.45,0.14],[7.45,0.14]);for(let y=-5.6;y<7.6;y+=1)dashes.push([32,y+0.25,4,0.5]);}
+  marks(dashes,solids,W){for(let x=W.x0;x<W.x1;x+=6)dashes.push([x+1.5,1,3,0.14]);solids.push([-5.45,0.14],[7.45,0.14]);for(let y=-5.6;y<7.6;y+=1)dashes.push([32,y+0.25,4,0.5]);}
 };

@@ -1,13 +1,27 @@
 /* sensors/lidar/pointcloud.js — puntenwolk (gedeelde geometrie voor beide vensters), kleuren en stralen-sweep */
-let ptsGeo=new THREE.BufferGeometry();
-const ptsMat=new THREE.PointsMaterial({size:0.07,vertexColors:true,sizeAttenuation:true});
+import * as THREE from 'three';
+import {D2R,fmod,mulberry32} from '../../core/util.js';
+import {S,EGO} from '../../core/state.js';
+import {scene} from '../../core/scene.js';
+import {css} from '../../core/models3d.js';
+import {layerEls,selfBlock,measure,mountX} from './model.js';
+import {PB} from './scan.js';
+export let ptsGeo=new THREE.BufferGeometry();   // enkel hier toewijzen (resizePoints)
+export const ptsMat=new THREE.PointsMaterial({size:0.07,vertexColors:true,sizeAttenuation:true});
 const ptsObj=new THREE.Points(ptsGeo,ptsMat);ptsObj.frustumCulled=false;ptsObj.renderOrder=2;scene.add(ptsObj);
-const SRCCOL=['#7d8792','#1fb5a3','#7fb8ff','#9b6bff','#bdbdbd','#c08a3e','#ff3b3b','#f5f0a0'];
-const SRCNAME=['grond','object','glas','regen','mist','stof','storing','markering'];
+export const pointUsers=[ptsObj];             // alle Points-objecten die ptsGeo tonen (ook het puntenwolkvenster)
+export const pointMats=[[ptsMat,1]];          // [materiaal, factor puntgrootte]
+export function resizePoints(N){
+  ptsGeo.dispose();ptsGeo=new THREE.BufferGeometry();const pos=new Float32Array(N*3);for(let k=0;k<N;k++)pos[k*3+1]=-1e5;
+  ptsGeo.setAttribute('position',new THREE.BufferAttribute(pos,3));ptsGeo.setAttribute('color',new THREE.BufferAttribute(new Float32Array(N*3),3));
+  for(const p of pointUsers)p.geometry=ptsGeo;}
+export function setPointSize(sz){for(const [m,f] of pointMats)m.size=sz*f;}
+export const SRCCOL=['#7d8792','#1fb5a3','#7fb8ff','#9b6bff','#bdbdbd','#c08a3e','#ff3b3b','#f5f0a0'];
+export const SRCNAME=['grond','object','glas','regen','mist','stof','storing','markering'];
 const tmpC=new THREE.Color();
 function hcol(z,c){const t=Math.max(0,Math.min(1,z/3));return c.setHSL((240-240*t)/360,0.85,0.5+0.06*t);}
 const SRC_C=SRCCOL.map(c=>new THREE.Color(c)),G_C=new THREE.Color('#8a949e'),O_C=new THREE.Color('#ff9a1f');
-function colorSlot(k){const ca=ptsGeo.attributes.color.array,mode=S.color,L=PB.L;let c;
+export function colorSlot(k){const ca=ptsGeo.attributes.color.array,mode=S.color,L=PB.L;let c;
   if(mode==='height')c=hcol(PB.Z[k],tmpC);
   else if(mode==='class')c=PB.Z[k]<0.2?G_C:O_C;
   else if(mode==='intensity'){const v=Math.min(1,PB.SG[k]/3);c=tmpC.setHSL(45/360,0.95,0.12+0.66*v);}
@@ -22,7 +36,7 @@ const beams=new THREE.LineSegments(beamGeo,beamMat);beams.frustumCulled=false;sc
 const hitGeo=new THREE.BufferGeometry();hitGeo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(300*3),3));
 const hits=new THREE.Points(hitGeo,new THREE.PointsMaterial({color:0xd26a00,size:0.16}));hits.frustumCulled=false;scene.add(hits);
 let sweep=0;
-function updateBeams(dt){
+export function updateBeams(dt){
   beams.visible=hits.visible=S.beams;if(!S.beams)return;
   beamMat.color.set(css('--lidar'));hits.material.color.set(css('--lidar'));
   const pa=beamGeo.attributes.position.array,ha=hitGeo.attributes.position.array;

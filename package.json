@@ -6,13 +6,16 @@
   "type": "module",
   "scripts": {
     "build": "node build.mjs",
-    "test": "node build.mjs && node tests/smoke.mjs"
+    "lint": "eslint src",
+    "test": "eslint src && node build.mjs && node tests/smoke.mjs"
   },
   "dependencies": {
     "three": "0.160.0"
   },
   "devDependencies": {
     "esbuild": "^0.24.0",
+    "eslint": "^9.39.5",
+    "globals": "^17.14.0",
     "playwright-core": "^1.48.0"
   }
 }

@@ -62,3 +62,4 @@ const EXPS=[
   q:'Wat ziet de solid-state lidar niet? Kies daarna <b>Roterend, 64 lagen</b> en vergelijk <b>Dak, midden</b> met <b>Dak, boven voorruit</b>: let op % geblokkeerd en op de hond vlak voor de wagen.',
   a:'Alles naast en achter de wagen valt buiten beeld; voor 360° zijn 3–5 sensoren nodig. Op het dak midden blokkeert het dak en de motorkap de onderste lagen: een hond vlak voor de bumper wordt niet gezien. Daarom combineren seriewagens een lidar achter de voorruit of in de grille met radar en ultrasoon rondom.'}
 ];
+export default EXPS;

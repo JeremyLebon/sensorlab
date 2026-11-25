@@ -5,16 +5,10 @@ import {readFileSync, writeFileSync, mkdirSync} from 'node:fs';
 import {build} from 'esbuild';
 
 const rd = p => readFileSync(new URL(p, import.meta.url), 'utf8');
-const order = JSON.parse(rd('./src/order.json')).files;
 const pkg = JSON.parse(rd('./package.json'));
 const stamp = `sensorlab ${pkg.version} · build ${new Date().toISOString().slice(0, 10)}`;
-
-const header = `import * as THREE from 'three';\nimport {OrbitControls} from 'three/addons/controls/OrbitControls.js';\n`;
-const body = order.map(f => `\n/* ===================== ${f} ===================== */\n` + rd('./src/' + f)).join('');
-const app = `/* ${stamp} */\n` + header + body;
-mkdirSync(new URL('./build/', import.meta.url), {recursive: true});
 mkdirSync(new URL('./dist/', import.meta.url), {recursive: true});
-writeFileSync(new URL('./build/app.js', import.meta.url), app);
+const common = {entryPoints: ['src/main.js'], bundle: true, write: false, legalComments: 'none', target: 'es2020', banner: {js: `/* ${stamp} */`}};
 
 const shell = rd('./src/index.html');
 const cssText = rd('./src/core/style.css');
@@ -30,11 +24,8 @@ const importmap = `<script type="importmap">
 const fill = (s, map) => Object.entries(map).reduce((a, [k, v]) => a.split(k).join(v), s);
 const safe = js => js.replace(/<\/script/gi, '<\\/script');
 
-// 1. offline: three bundelen tot één IIFE
-const res = await build({
-  entryPoints: ['build/app.js'], bundle: true, format: 'iife', minify: true, write: false,
-  alias: {'three/addons': './node_modules/three/examples/jsm'}, legalComments: 'none', target: 'es2020'
-});
+// 1. offline: alles (ook three) gebundeld tot één IIFE
+const res = await build({...common, format: 'iife', minify: true, alias: {'three/addons': './node_modules/three/examples/jsm'}});
 const offline = fill(shell, {
   '<!--@FONTS-->': `<!-- ${stamp} · offline-versie: geen externe bestanden -->`,
   '/*@CSS*/': cssText, '<!--@IMPORTMAP-->': '',
@@ -42,10 +33,11 @@ const offline = fill(shell, {
 });
 writeFileSync(new URL('./dist/sensorlab.html', import.meta.url), offline);
 
-// 2. CDN-versie voor het artifact
+// 2. CDN-versie voor het artifact: eigen code gebundeld, three extern via de importmap
+const resCdn = await build({...common, format: 'esm', minify: false, external: ['three', 'three/addons/*']});
 const cdn = fill(shell, {
   '<!--@FONTS-->': fonts, '/*@CSS*/': cssText, '<!--@IMPORTMAP-->': importmap,
-  '<!--@SCRIPT-->': `<script type="module">\n${safe(app)}</script>`
+  '<!--@SCRIPT-->': `<script type="module">\n${safe(resCdn.outputFiles[0].text)}</script>`
 });
 writeFileSync(new URL('./dist/sensorlab-cdn.html', import.meta.url), cdn);
 
